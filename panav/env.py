@@ -8,16 +8,16 @@ class NavigationEnv:
     def __init__(self, limits, obstacles,starts,goals):
 
         self.limits = limits # Boundary limits at each axis. limits[0]-> x axis, limits[1]-> y axis, limits[2]-> z axis.
-        # obstacles are Obstacle class objects.
+        # obstacles are Region class objects.
         self.obstacles = obstacles
         
         # starts and goals are shapely Polygon objects.
         self.starts = starts
         self.goals = goals
         
-class Obstacle:
+class Region:
     '''
-        Obstacles are always convex polytopes. Visualization code based on the S2M2 repo.
+        Regions are always convex polytopes. Visualization code based on the S2M2 repo.
     '''
     def __init__(self,A,b):
         self.A = A
@@ -30,7 +30,7 @@ class Obstacle:
         verts = np.array(ppm.duality.compute_polytope_vertices(self.A, self.b))
         return verts[ConvexHull(vert).vertices,:]
 
-class PolygonObstacle(Obstacle):
+class PolygonRegion(Region):
     def __init__(self,vertices):
         self.verts = np.array(vertices)
         self.verts[ConvexHull(self.verts).vertices,:]
@@ -41,7 +41,7 @@ class PolygonObstacle(Obstacle):
     def vertices(self):
         return self.verts
         
-class Box2DObstacle(Obstacle):
+class Box2DRegion(Region):
     
     def __init__(self, xlim, ylim):
         self.xlim =  xlim
@@ -53,4 +53,11 @@ class Box2DObstacle(Obstacle):
     def vertices(self):
         return shapely.geometry.box(self.xlim[0],self.ylim[0],
                                     self.xlim[1],self.ylim[1])
-        
+
+def box_2d_center(center,side):
+    '''
+        Create a 2D box with specified center coordinates and side lengths.
+    '''
+    lb = center-side/2
+    ub = center+side/2
+    return Box2DRegion((lb[0],ub[0]),(lb[1],ub[1]))

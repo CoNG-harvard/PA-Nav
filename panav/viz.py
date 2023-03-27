@@ -24,14 +24,12 @@ def draw_env(env,ax = None):
    
     # Plot start and goal zones.
     for agent_ID,s in enumerate(env.starts):
-        x,y = s.exterior.xy
-        ax.fill(x,y,facecolor='blue', alpha=0.3)
-        ax.text(np.mean(x[1:]),np.mean(y[1:]),str(agent_ID),ha='center',va='center')
+        x,y = draw_start(s,ax)
+        ax.text(x,y,str(agent_ID),ha='center',va='center')
     
     for agent_ID,g in enumerate(env.goals):
-        x,y = g.exterior.xy
-        ax.fill(x,y,facecolor='g', alpha=0.3)
-        ax.text(np.mean(x[1:]),np.mean(y[1:]),str(agent_ID),ha='center',va='center')
+        x,y = draw_goal(g,ax)
+        ax.text(x,y,str(agent_ID),ha='center',va='center')
     
 
     # Switch off boundaries
@@ -45,3 +43,17 @@ def draw_obstacle(o,ax):
     poly = Polygon(verts)
     x, y = poly.exterior.xy
     ax.fill(x, y, facecolor='r', alpha=0.3)
+    
+def draw_start(o,ax):
+    verts = o.vertices()
+    poly = Polygon(verts)
+    x, y = poly.exterior.xy
+    ax.fill(x, y, facecolor='blue', alpha=0.3)
+    return np.mean(x[1:]),np.mean(y[1:])
+
+def draw_goal(o,ax):
+    verts = o.vertices()
+    poly = Polygon(verts)
+    x, y = poly.exterior.xy
+    ax.fill(x, y, facecolor='g', alpha=0.3)
+    return np.mean(x[1:]),np.mean(y[1:])

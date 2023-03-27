@@ -7,9 +7,10 @@ The core functionalities are encapsulated in the *panav* Python package.
 * Jupyter lab
 * matplotlib
 * polytope: a Python package that allows flexible construction of convex and non-convex polytopes, called polytope, which is part of the TuLip control toolbox. Install by `pip install polytope`.
-* cvxopt: a convex optimization library. Install by `conda install -c conda-forge cvxopt`. 
+* cvxopt: a convex optimization library. Install by `conda install -c conda-forge cvxopt`. Required by pypoman.
 * pypoman: this library implements common operations over convex polyhedra such as polytope projection, double description (conversion between halfspace and vertex representations), computing the Chebyshev center, etc. Install by `pip install pypoman`.
 * shapely: a powerful library for geometry shape manipulations. Useful in visualization. Install by `conda install -c conda-forge shapely`
+* cvxpy: a convenient Python interface to write and solve convex and mix-interger programming problems. `pip install cvxpy`.
 
 ## Structure of the repo
 
