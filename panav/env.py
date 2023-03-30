@@ -3,6 +3,8 @@ from scipy.spatial import ConvexHull
 import pypoman as ppm
 import polytope as pc
 import shapely
+from shapely import affinity
+
 
 class NavigationEnv:
     def __init__(self, limits, obstacles,starts,goals):
@@ -33,7 +35,7 @@ class Region:
 class PolygonRegion(Region):
     def __init__(self,vertices):
         self.verts = np.array(vertices)
-        self.verts[ConvexHull(self.verts).vertices,:]
+        self.verts = self.verts[ConvexHull(self.verts).vertices,:]
         self.poly = pc.qhull(self.verts)
 
         self.A, self.b = self.poly.A, self.poly.b
@@ -61,3 +63,21 @@ def box_2d_center(center,side):
     lb = center-side/2
     ub = center+side/2
     return Box2DRegion((lb[0],ub[0]),(lb[1],ub[1]))
+
+
+def line_seg_to_obstacle(x1,x2,bloating_r):
+    '''
+        Convert a line segment x1-x2 to a box obstacle with width 2*bloating_r
+    '''
+    b = shapely.geometry.LineString([x1,x2])
+    b_p = affinity.scale(affinity.rotate(b,90),
+                 xfact = 2*bloating_r/b.length,
+                 yfact = 2*bloating_r/b.length,
+              )
+
+    d = (x2-x1)*(1/2+bloating_r/b.length)
+
+    side_1 = affinity.translate(b_p,*d)
+    side_2 = affinity.translate(b_p,*(-d))
+    
+    return PolygonRegion([*side_1.coords,*side_2.coords])
