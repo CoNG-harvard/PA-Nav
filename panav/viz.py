@@ -33,7 +33,7 @@ def draw_env(env,ax = None):
     
 
     # Switch off boundaries
-    ax.axis(False)
+    # ax.axis(False)
     
     # Use a square aspect ratio
     ax.set_aspect('equal', adjustable='box')
@@ -57,3 +57,44 @@ def draw_goal(o,ax):
     x, y = poly.exterior.xy
     ax.fill(x, y, facecolor='g', alpha=0.3)
     return np.mean(x[1:]),np.mean(y[1:])
+
+
+
+from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Circle
+def animation(env,pos,bloating_r,dt):
+    '''
+        Animate multi-agent trajectories in the given env.
+        
+        pos: pos[i] is the trajectory for agent i.
+        
+        bloat_r: the bloating radius of all agents.
+        
+        dt: time interval between two consecutive frames, measured in seconds.
+    '''
+    fig = plt.figure()
+    ax = plt.gca()
+    draw_env(env, ax)
+
+    agents = range(len(pos))
+
+    for a in agents:
+        ax.plot(pos[a][:,0],pos[a][:,1],alpha = 0.5)
+
+    agent_discs = []
+    for a in agents:
+        disc = Circle(pos[a][0,:],bloating_r)
+        ax.add_artist(disc)
+        agent_discs.append(disc)
+
+    def init_func():
+        return agent_discs
+
+    def animate(t):
+        for a,disc in zip(agents,agent_discs):
+            if t<len(pos[a]):
+                disc.center = pos[a][t,0],pos[a][t,1]
+        return agent_discs
+
+    anim = FuncAnimation(fig,animate,frames = max([len(p) for p in pos]),blit=True,interval = dt*1000)
+    return anim
