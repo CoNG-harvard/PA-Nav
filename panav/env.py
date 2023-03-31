@@ -4,6 +4,7 @@ import pypoman as ppm
 import polytope as pc
 import shapely
 from shapely import affinity
+import cvxpy as cp
 
 
 class NavigationEnv:
@@ -31,6 +32,16 @@ class Region:
         '''
         verts = np.array(ppm.duality.compute_polytope_vertices(self.A, self.b))
         return verts[ConvexHull(vert).vertices,:]
+
+    def project(self, x):
+        '''
+            Project a point x onto the region.
+        '''
+        x_proj = cp.Variable(x.shape)
+        prob = cp.Problem(cp.Minimize(cp.norm(x_proj-x)),\
+                          [self.A @ x_proj - self.b<=0])
+        prob.solve()
+        return x_proj.value
 
 class PolygonRegion(Region):
     def __init__(self,vertices):
