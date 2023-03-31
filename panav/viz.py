@@ -2,7 +2,16 @@ from matplotlib import pyplot as plt
 import numpy as np
 from shapely.geometry.polygon import Polygon
 
-def draw_env(env,ax = None):
+def draw_env(env,paths=[],ax = None):
+    '''
+        env: the path planning environment.
+
+        paths: a list of agents' paths. 
+               
+               paths[i](shape = (dim,n_steps)) is the path for agent i. 
+
+        ax: the axis to plot on.
+    '''
     if ax is None:
         ax = plt.gca()
     
@@ -30,6 +39,11 @@ def draw_env(env,ax = None):
     for agent_ID,g in enumerate(env.goals):
         x,y = draw_goal(g,ax)
         ax.text(x,y,str(agent_ID),ha='center',va='center')
+
+    agents = range(len(paths))
+
+    for a in agents:    
+        ax.plot(paths[a][0,:],paths[a][1,:],alpha = 0.5)
     
 
     # Switch off boundaries
@@ -62,11 +76,11 @@ def draw_goal(o,ax):
 
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
-def animation(env,pos,bloating_r,dt):
+def animation(env,paths,bloating_r,dt):
     '''
         Animate multi-agent trajectories in the given env.
         
-        pos: pos[i] is the trajectory for agent i.
+        paths: paths[i](shape = (dim,n_steps)) is the path for agent i.
         
         bloat_r: the bloating radius of all agents.
         
@@ -74,16 +88,16 @@ def animation(env,pos,bloating_r,dt):
     '''
     fig = plt.figure()
     ax = plt.gca()
-    draw_env(env, ax)
+    draw_env(env,paths, ax)
 
-    agents = range(len(pos))
+    agents = range(len(paths))
 
-    for a in agents:
-        ax.plot(pos[a][:,0],pos[a][:,1],alpha = 0.5)
+    # for a in agents:
+    #     ax.plot(paths[a][:,0],paths[a][:,1],alpha = 0.5)
 
     agent_discs = []
     for a in agents:
-        disc = Circle(pos[a][0,:],bloating_r)
+        disc = Circle(paths[a][0,:],bloating_r)
         ax.add_artist(disc)
         agent_discs.append(disc)
 
@@ -92,9 +106,9 @@ def animation(env,pos,bloating_r,dt):
 
     def animate(t):
         for a,disc in zip(agents,agent_discs):
-            if t<len(pos[a]):
-                disc.center = pos[a][t,0],pos[a][t,1]
+            if t<paths[a].shape[-1]:
+                disc.center = paths[a][0,t],paths[a][1,t]
         return agent_discs
 
-    anim = FuncAnimation(fig,animate,frames = max([len(p) for p in pos]),blit=True,interval = dt*1000)
+    anim = FuncAnimation(fig,animate,frames = max([p.shape[-1] for p in paths]),blit=True,interval = dt*1000)
     return anim

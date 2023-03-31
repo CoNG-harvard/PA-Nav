@@ -27,6 +27,8 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
 
         t0: initial time. By default it is 0.
 
+        Output: t.value(shape = K+1), x.value(shape = (d,K+1))
+
     '''
     
     M = 100 * np.max(np.abs(env.limits))
@@ -44,16 +46,11 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
     constraints.append(start.A @ x[:,0] <= start.b)
     constraints.append(goal.A @ x[:,-1] <= goal.b)
 
-    # Velocity constraints
-    vb = vmax*(t[1:]-t[:-1])
-    for i in range(d):
-        diff = x[i,1:]-x[i,:-1]
-        constraints.append(np.sqrt(2) * diff <= vb)
-        constraints.append(- vb <= np.sqrt(2) * diff)
-
 
     # Static obstacle constraints
     obs = [([],O) for O in env.obstacles] + temp_obstacles
+    lb_active = []
+    ub_active = []
     for duration,O in obs:
         A, b= O.A,O.b
         # print(A,b,O.vertices())
@@ -73,13 +70,14 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
             constraints.append(cp.sum(alpha,axis = 0)>=1)
         else:  # Temporary obstacles.
             
-            lb_active = cp.Variable(K,boolean=True)
-            ub_active = cp.Variable(K,boolean=True)
+            lb_active.append(cp.Variable(K,boolean=True))
+            ub_active.append(cp.Variable(K,boolean=True))
             lb,ub = duration
-            constraints.append(t[:-1]-ub+ M * (1-ub_active)>=0)
-            constraints.append(lb-t[1:]+ M * (1-lb_active)>=0)
+            print(lb,ub)
+            constraints.append(t[:-1]-ub+ M * (1-ub_active[-1])>=0)
+            constraints.append(lb-t[1:]+ M * (1-lb_active[-1])>=0)
 
-            constraints.append(cp.sum(alpha,axis = 0)+lb_active+ub_active>=1)
+            constraints.append(cp.sum(alpha,axis = 0)+lb_active[-1]+ub_active[-1]>=1)
             
 
 
@@ -87,7 +85,18 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
     constraints.append(t[0]==t0)
     constraints.append(t[1:]>=t[:-1])
 
+    # Velocity constraints
+    vb = vmax*(t[1:]-t[:-1])
+    for i in range(d):
+        diff = x[i,1:]-x[i,:-1]
+        constraints.append(np.sqrt(2) * diff <= vb)
+        constraints.append(- vb <= np.sqrt(2) * diff)
+
     prob = cp.Problem(cp.Minimize(t[-1]),constraints)
 
     prob.solve()
+    # print(np.array([(l.value,u.value) for l,u in zip(lb_active,ub_active)]))
+    # print(np.sum(alpha.value,axis = 0))
+    # print(vb.value,d,prob.status)
+    # print(constraints)
     return t.value,x.value
