@@ -53,7 +53,6 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
     ub_active = []
     for duration,O in obs:
         A, b= O.A,O.b
-        # print(A,b,O.vertices())
 
         H = A @ x-(b+ np.linalg.norm(A) * bloating_r).reshape(-1,1) # Bloating radius
 
@@ -61,25 +60,20 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
         
         constraints.append(H[:,1:] + M * (1-alpha)>=0)
         constraints.append(H[:,:-1] + M * (1-alpha)>=0)
-
-
-      
-
         
         if len(duration)==0:  # Permanent obstacles
             constraints.append(cp.sum(alpha,axis = 0)>=1)
-        else:  # Temporary obstacles.
-            
+        else:  # Temporary obstacles.        
             lb_active.append(cp.Variable(K,boolean=True))
             ub_active.append(cp.Variable(K,boolean=True))
+            
             lb,ub = duration
-            print(lb,ub)
+    
             constraints.append(t[:-1]-ub+ M * (1-ub_active[-1])>=0)
             constraints.append(lb-t[1:]+ M * (1-lb_active[-1])>=0)
 
             constraints.append(cp.sum(alpha,axis = 0)+lb_active[-1]+ub_active[-1]>=1)
             
-
 
     # Time positivity constraint
     constraints.append(t[0]==t0)
@@ -94,9 +88,5 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
 
     prob = cp.Problem(cp.Minimize(t[-1]),constraints)
 
-    prob.solve()
-    # print(np.array([(l.value,u.value) for l,u in zip(lb_active,ub_active)]))
-    # print(np.sum(alpha.value,axis = 0))
-    # print(vb.value,d,prob.status)
-    # print(constraints)
+    prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
     return t.value,x.value
