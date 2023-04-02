@@ -33,11 +33,11 @@ def draw_env(env,paths=[],ax = None):
    
     # Plot start and goal zones.
     for agent_ID,s in enumerate(env.starts):
-        x,y = draw_start(s,ax)
+        x,y = draw_start(s,ax, label = 'Starts' if agent_ID==0 else '')
         ax.text(x,y,str(agent_ID),ha='center',va='center')
     
     for agent_ID,g in enumerate(env.goals):
-        x,y = draw_goal(g,ax)
+        x,y = draw_goal(g,ax, label = 'Goals' if agent_ID == 0 else '')
         ax.text(x,y,str(agent_ID),ha='center',va='center')
 
     agents = range(len(paths))
@@ -52,24 +52,26 @@ def draw_env(env,paths=[],ax = None):
     # Use a square aspect ratio
     ax.set_aspect('equal', adjustable='box')
 
+    ax.legend()
+
 def draw_obstacle(o,ax):
     verts = o.vertices()
     poly = Polygon(verts)
     x, y = poly.exterior.xy
     ax.fill(x, y, facecolor='r', alpha=0.3)
     
-def draw_start(o,ax):
+def draw_start(o,ax,label = ''):
     verts = o.vertices()
     poly = Polygon(verts)
     x, y = poly.exterior.xy
-    ax.fill(x, y, facecolor='blue', alpha=0.3)
+    ax.fill(x, y, facecolor='blue', alpha=0.3,label = label)
     return np.mean(x[1:]),np.mean(y[1:])
 
-def draw_goal(o,ax):
+def draw_goal(o,ax,label = ''):
     verts = o.vertices()
     poly = Polygon(verts)
     x, y = poly.exterior.xy
-    ax.fill(x, y, facecolor='g', alpha=0.3)
+    ax.fill(x, y, facecolor='g', alpha=0.3,label = label)
     return np.mean(x[1:]),np.mean(y[1:])
 
 
