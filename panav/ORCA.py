@@ -21,11 +21,8 @@ class VO:
         self.r = (ra+rb)/tau
         self.center_theta = np.arctan2(self.center[1],self.center[0])
         
-        if la.norm(self.center)>0 and self.r <= la.norm(self.center):
+        if la.norm(self.center)>0 and self.r <= la.norm(self.center): # The two agents do not overlap
             self.phi = np.arcsin(self.r/la.norm(self.center))
-
-         
-        self.center_line_theta = np.arctan2(-self.center[1],-self.center[0])
         
     def visualize(self, ax):
         '''
@@ -56,17 +53,17 @@ class VO:
 
             color = ['blue','orange','grey']
 
-            labels = ['VO Zone 0','VO Zone 1','Not in VO']
+            labels = ['Zone 0','Zone 1','Not in VO']
 
             for z in [0,1,2]:
 
                 ax.scatter(test_pt[zone_code == z,0],test_pt[zone_code == z,1]\
-                           ,s=3,marker=mk[z],fc='none',ec=color[z],label = labels[z])
+                           ,s=3,marker=mk[z],fc='none',ec=color[z],label = labels[z]\
+                            )
 
         else:
             ax.scatter(0,0,alpha=0.0,label = 'Two agents overlap')
 
-        ax.legend(loc='upper right')
         ax.grid(True)
         ax.set_aspect('equal')
 
@@ -77,11 +74,15 @@ class VO:
             
             Output: zone code. 
                    -1: the bloating regions of the two agents overlap. VO is the entire space. 
-                    0: test_pt is in VO and is closest to the front arc of the circle.
-                    1: test_pt in VO and is closest to one of the two sides.
+                    0: test_pt is in VO and is closest to the front arc of VO.
+                    1: test_pt in VO and is closest to one of the two sides of VO.
                     2: test_pt is not in VO.
         '''
 
+        test_pt = np.array(test_pt)
+        single_input = len(test_pt.shape) == 1
+        if single_input:
+            test_pt = test_pt[np.newaxis,:]
 
         zone_code = np.zeros(len(test_pt))
         
@@ -114,4 +115,42 @@ class VO:
             zone_code[zone1] = 1
             zone_code[zone2] = 2
 
+        if single_input:
+            zone_code = zone_code[0]
+
         return zone_code
+
+    def u(self, test_pt):
+        '''
+            Compute the u vector of the test_pt, such that u is the projection of
+            test_pt on the boundary of this VO.
+        '''
+
+        zone = self.zones(test_pt)
+
+        if zone == -1:
+            u = -self.center
+        else:
+            to_center = test_pt - self.center
+
+            if la.norm(to_center)==0:
+                u = - self.center/(la.norm(self.center)) * self.r
+            else:
+                if zone == 2: # Relative velocity not in VO.
+                    u = np.zeros(test_pt.shape)
+                elif zone == 1:
+                    side_thetas = [self.center_theta-self.phi, 
+                                   self.center_theta+self.phi]
+                    sides = np.vstack([np.cos(side_thetas),np.sin(side_thetas)])
+
+                    proj = sides.T.dot(test_pt) * sides # proj = [proj_1(a column vector), proj 2(a column vector)]
+
+                    dist_2_proj = la.norm((proj.T - test_pt).T,axis = 0)
+
+                    true_proj = proj[:,np.argmin(dist_2_proj)]
+
+                    u = true_proj - test_pt
+                elif zone == 0:
+                    u = to_center/(la.norm(to_center))\
+                        * (self.r - la.norm(to_center))
+        return u
