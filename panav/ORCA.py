@@ -94,7 +94,7 @@ class VO:
             in_circ = la.norm(test_pt - self.center,axis = 1)<=self.r
 
             in_squeeze = test_pt.dot(self.center)\
-                        /(la.norm(test_pt,axis = 1) * la.norm(self.center)) >= np.cos(self.phi)
+                        >= np.cos(self.phi) * (la.norm(test_pt,axis = 1) * la.norm(self.center)) 
 
             far = np.logical_and(in_squeeze, 
                                  la.norm(test_pt,axis = 1)>= self.r/np.tan(self.phi))
@@ -102,8 +102,7 @@ class VO:
             vo = np.logical_or(in_circ,far)
 
             in_front = (test_pt - self.center).dot(-self.center)\
-                      /(la.norm(test_pt - self.center,axis = 1) * la.norm(self.center)) \
-                      >= np.cos(np.pi/2-self.phi)
+                      >= np.cos(np.pi/2-self.phi) * (la.norm(test_pt - self.center,axis = 1) * la.norm(self.center))
 
             zone0 = np.logical_and(vo,
                                    np.logical_and(in_circ, in_front))
@@ -137,6 +136,7 @@ class VO:
 
             if la.norm(to_center)==0:
                 u = - self.center/(la.norm(self.center)) * self.r
+                print('Closely hit')
             else:
                 if zone == 2: # Relative velocity not in VO.
                     l = la.norm(self.center)*np.cos(self.phi)
