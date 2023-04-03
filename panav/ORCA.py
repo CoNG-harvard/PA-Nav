@@ -3,6 +3,84 @@ from matplotlib.patches import Circle
 from numpy import linalg as la
 import cvxpy as cp
 
+class ORCA_Agent:
+    def __init__(self,protocol,tau,
+                bloating_r,vmax,
+                 init_p,init_v):
+        
+        valid = {0, 1, 2}
+        if protocol not in valid:
+            raise ValueError("results: protocol must be one of %r." % valid)
+       
+        self.protocol = protocol
+        self.v = init_v
+        self.p = init_p
+        self.tau = tau
+        self.bloating_r = bloating_r
+        
+        self.v_opt = np.zeros(self.v.shape)
+        self.vmax = vmax
+    
+    def update_v_opt(self,v_pref):
+        self.v_opt = self.calc_v_opt(v_pref)
+        
+    def update_v(self,v_pref,obstacles,neigbor_agents):
+        self.v = self.safe_v(v_pref,obstacles,neigbor_agents)
+    
+    def calc_v_opt(self,v_pref):
+         # Determine v_opt
+        if self.protocol == 0:
+            v_opt = np.zeros(v_pref.shape)
+        elif self.protocol == 1:
+            v_opt = v_pref
+        elif self.protocol == 2:
+            v_opt = self.v
+        return v_opt
+    
+    def safe_v(self,v_pref,obstacles,neigbor_agents):
+        
+        v = cp.Variable(self.v.shape) 
+        # Constraints induced by other agents.
+        us,ns = [],[]
+        for b in neigbor_agents: 
+            vo = VO(self.p,b.p,
+                    self.bloating_r,b.bloating_r,self.tau)
+            
+            v_rel = self.v_opt-b.v_opt
+            
+            zone_code = vo.zones(v_rel)
+            u = vo.u(v_rel)
+            if zone_code == 2:
+                n = -u/np.linalg.norm(u)
+            else:
+                n = u/np.linalg.norm(u)
+            
+            us.append(u)
+            ns.append(n)
+
+        constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
+
+        # Constraints induced by static obstacles
+        obstacle_d = [] 
+        for O in obstacles: 
+            obstacle_d.append(O.project(self.p) - self.p)
+
+        constraints+=[(d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)) 
+                      for d in obstacle_d]
+
+        # Maximum speed constraint
+        constraints.append(cp.norm(v)<= self.vmax)
+
+        prob = cp.Problem(cp.Minimize(cp.norm(v-v_pref)),constraints)
+        prob.solve()
+        v = v.value
+
+        if v is None: # The case where the problem is infeasible.
+            # print('infeasible')
+            v = np.zeros(v_prefs.shape) # Temporary solution. To be extended next.
+        
+        return v
+        
 
 class VO:
     '''
