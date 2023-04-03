@@ -1,12 +1,14 @@
 import numpy as np
 from matplotlib.patches import Circle
 from numpy import linalg as la
+import cvxpy as cp
 
 
 class VO:
     '''
         The velocity obstacle of agent a induced by agent b.
-        See notebooks/Velocity Obstacle.ipynb for a visual documentation.
+        See notebooks/Velocity Obstacle.ipynb for a visual documentation of VO.
+        See notebooks/Calculate u.ipynb for a visual documentation of the calculation of u vector. 
     '''
     def __init__(self,pa,pb,ra,rb,tau):
         '''
@@ -87,7 +89,7 @@ class VO:
         zone_code = np.zeros(len(test_pt))
         
         if self.r > la.norm(self.center): 
-            zone_code = -1
+            zone_code[:] = -1
         else:
             in_circ = la.norm(test_pt - self.center,axis = 1)<=self.r
 
@@ -137,7 +139,29 @@ class VO:
                 u = - self.center/(la.norm(self.center)) * self.r
             else:
                 if zone == 2: # Relative velocity not in VO.
-                    u = np.zeros(test_pt.shape)
+                    l = la.norm(self.center)*np.cos(self.phi)
+                    thetas = [self.center_theta + self.phi,
+                              self.center_theta - self.phi]
+                    p1,p2 = [l * np.array([np.cos(theta),np.sin(theta)])
+                             for theta in thetas]
+                    
+                    proj1 = cp.Variable(p1.shape)
+                    constraints = [
+                        (proj1 - p1) @ (self.center-p1)>=0,
+                        (proj1 - p2) @ (self.center-p2)>=0,
+                        (proj1 - (p1+p2)/2) @ (p1+p2)>=0
+                    ]
+                    prob = cp.Problem(cp.Minimize(cp.norm(proj1 - test_pt)),constraints)
+                    prob.solve()
+                    proj1 = proj1.value
+                    
+                    proj2 = self.center+\
+                            (test_pt-self.center)/la.norm(test_pt-self.center) * self.r
+                    
+                    dists = [la.norm(test_pt-proj1),la.norm(test_pt-proj2)]
+                    
+                    proj = [proj1,proj2][np.argmin(dists)]
+                    u = proj - test_pt
                 elif zone == 1:
                     side_thetas = [self.center_theta-self.phi, 
                                    self.center_theta+self.phi]
