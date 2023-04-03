@@ -54,7 +54,7 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
     for duration,O in obs:
         A, b= O.A,O.b
 
-        H = A @ x-(b+ np.linalg.norm(A) * bloating_r).reshape(-1,1) # Bloating radius
+        H = A @ x-(b+ np.linalg.norm(A,axis=1) * bloating_r).reshape(-1,1) # Bloating radius
 
         alpha = cp.Variable((H.shape[0],K),boolean=True)
         
