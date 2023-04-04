@@ -14,6 +14,7 @@ The core functionalities are encapsulated in the *panav* Python package.
 * **Gurobi**: a semi-commericalized optimization solver. Install its python interface + gurobi license. No need to install the entire Gurobi software.
   * Install Gurobi Python interface: https://www.gurobi.com/documentation/10.0/quickstart_windows/cs_anaconda_and_grb_conda_.html.
   * Create a Gurobi account, request for an academic license, run grbt get key to install the license on your computer. https://www.gurobi.com/login/
+* Networkx: used to construct the high-level MAMP search tree, as well as determining the order in a partial ordering. Install by 
 
 
 ## Structure of the repo
