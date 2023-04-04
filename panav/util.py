@@ -1,10 +1,11 @@
 import numpy as np
+import itertools
 def unit_cube(d):
     '''
         Return the vertices of a d-dimensional unit cube.
-        Output: shape = (2^d,d,1)
+        Output: shape = (2^d,d)
     '''
-    one = np.ones((d,1))
+    one = np.ones(d)
     cube_vertices = [np.sum(unit_vec,axis = 1)/d for unit_vec in itertools.product(*([one,-one] for _ in range(d)))]
     return cube_vertices
 
@@ -17,7 +18,7 @@ def unique_tx(t,x):
 
     unique_index = []
     for i in range(len(times)-1):
-        if times[i]<times[i+1]:
+        if np.abs(times[i]-times[i+1])>1e-5:
             unique_index.append(i)
             
     unique_index.append(i+1)

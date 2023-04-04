@@ -6,6 +6,10 @@ import shapely
 from shapely import affinity
 import cvxpy as cp
 
+from panav.util import unit_cube
+from polytope import qhull
+
+
 
 class NavigationEnv:
     def __init__(self, limits, obstacles,starts,goals):
@@ -92,3 +96,32 @@ def line_seg_to_obstacle(x1,x2,bloating_r):
     side_2 = affinity.translate(b_p,*(-d))
     
     return PolygonRegion([*side_1.coords,*side_2.coords])
+
+def wp_to_tube_obstacle(t1,t2,p1,p2,bloating_r):
+    '''
+        Convert a timed line segment (t1,p1)-(t2,p2) to a space-time tube obstacle with bloating radius bloating_r. 
+        Output: (Ap,bp) characterizing the polytopic space-time tube obstacle.
+    '''
+    p1,p2 = np.array(p1),np.array(p2)
+    if len(p1.shape) == 0:
+        d = 1
+    else:
+        d = p1.shape[0]
+    
+    tube_vertices = [np.hstack([t,p+1.0*bloating_r*unit_vec]) 
+                     for t,p in zip([t1,t2],[p1,p2]) 
+                     for unit_vec in unit_cube(d)]
+    
+    poly = qhull(np.vstack(tube_vertices))
+
+    Ap,bp = poly.A,poly.b
+    return Ap,bp
+
+
+# Convert the agent's path space-time tube obstacles.
+def trajectory_to_tube_obstacles(times,xs,bloating_r):
+    tube_obs = []
+    for k in range(xs.shape[-1]-1):
+        tube_obs.append(wp_to_tube_obstacle(times[k],times[k+1],
+                                            xs[:,k],xs[:,k+1],bloating_r))
+    return tube_obs

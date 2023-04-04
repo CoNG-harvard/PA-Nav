@@ -1,5 +1,6 @@
 import cvxpy as cp
 import numpy as np
+from panav.env import trajectory_to_tube_obstacles
 
 def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
                     temp_obstacles=[],\
@@ -90,3 +91,76 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
 
     prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
     return t.value,x.value
+
+
+def Tube_Planning(env, start, goal, vmax, bloating_r,
+                    obs_trajectories=[],\
+                     d=2,K=10,t0=0):
+    '''
+        Use tube obstacles to model other moving agents instead of temporary obstacles,
+
+        obs_trajectories: a list of tuples in the format (times,xs), corresponding to the trajectory of another agent.
+    '''
+
+    M = 5* np.max(np.abs(env.limits))
+        
+    x = cp.Variable((d, K+1))
+    t = cp.Variable((1,K+1))
+
+    constraints = []
+
+    # Boundary constraints
+    constraints.append(x <= np.array(env.limits)[:,-1].reshape(-1,1) - 3*bloating_r)
+    constraints.append(x >= np.array(env.limits)[:,0].reshape(-1,1) + 3* bloating_r)
+
+    # Start and goal constraints
+    constraints.append(start.A @ x[:,0] <= start.b)
+    constraints.append(goal.A @ x[:,-1] <= goal.b)
+
+
+    # Static obstacle constraints
+    for O in env.obstacles:
+        A, b= O.A,O.b
+
+        H = A @ x-(b+ np.linalg.norm(A,axis=1) * bloating_r).reshape(-1,1) # Bloating radius
+
+        alpha = cp.Variable((H.shape[0],K),boolean=True)
+
+        constraints.append(H[:,1:] + M * (1-alpha)>=0)
+        constraints.append(H[:,:-1] + M * (1-alpha)>=0)
+
+        
+        constraints.append(cp.sum(alpha,axis = 0)>=1)
+
+    tx = cp.vstack([t,x])
+    
+    tube_obs = []
+    for times,xs in obs_trajectories:
+        tube_obs+=trajectory_to_tube_obstacles(times,xs,bloating_r)
+
+    for Ap,bp in tube_obs:
+        Hp = Ap @ tx - (bp + np.linalg.norm(Ap,axis=1)*bloating_r).reshape(-1,1)
+        
+        alpha = cp.Variable((Hp.shape[0],K),boolean=True)
+
+        constraints.append(Hp[:,1:] + M * (1-alpha)>=0)
+        constraints.append(Hp[:,:-1] + M * (1-alpha)>=0)
+
+        constraints.append(cp.sum(alpha,axis = 0)>=1)
+
+    # Time positivity constraint
+    constraints.append(t[0,0]==t0)
+    constraints.append(t[0,1:]>=t[0,:-1])
+
+    # Velocity constraints
+    vb = vmax*(t[0,1:]-t[0,:-1])
+    for i in range(d):
+        diff = x[i,1:]-x[i,:-1]
+        constraints.append(np.sqrt(2) * diff <= vb)
+        constraints.append(- vb <= np.sqrt(2) * diff)
+
+    prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
+
+    prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
+    
+    return t.value[0,:],x.value
