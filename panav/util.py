@@ -1,4 +1,12 @@
 import numpy as np
+def unit_cube(d):
+    '''
+        Return the vertices of a d-dimensional unit cube.
+        Output: shape = (2^d,d,1)
+    '''
+    one = np.ones((d,1))
+    cube_vertices = [np.sum(unit_vec,axis = 1)/d for unit_vec in itertools.product(*([one,-one] for _ in range(d)))]
+    return cube_vertices
 
 def unique_tx(t,x):
     '''

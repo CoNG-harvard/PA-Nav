@@ -45,7 +45,7 @@ class Region:
 
 class PolygonRegion(Region):
     def __init__(self,vertices):
-        self.verts = np.array(vertices)
+        self.verts = np.array(vertices) # verts.shape = (n,dim)
         self.verts = self.verts[ConvexHull(self.verts).vertices,:]
         self.poly = pc.qhull(self.verts)
 
