@@ -99,7 +99,7 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     '''
         Use tube obstacles to model other moving agents instead of temporary obstacles,
 
-        obs_trajectories: a list of tuples in the format (times,xs), corresponding to the trajectory of another agent.
+        obs_trajectories: a list of tuples (times,xs), corresponding to the trajectory of another agent.
     '''
 
     M = 5* np.max(np.abs(env.limits))
@@ -162,5 +162,7 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
 
     prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
-    
-    return t.value[0,:],x.value
+    if t.value is not None:
+        return t.value[0,:],x.value
+    else:
+        return None
