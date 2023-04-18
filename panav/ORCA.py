@@ -6,15 +6,21 @@ import cvxpy as cp
 class ORCA_Agent:
     def __init__(self,protocol,tau,
                 bloating_r,vmax,
-                 init_p,init_v):
+                 init_p,init_v=None):
         
         valid = {0, 1, 2}
         if protocol not in valid:
             raise ValueError("results: protocol must be one of %r." % valid)
        
         self.protocol = protocol
-        self.v = init_v
+        
         self.p = init_p
+
+        if init_v is None:
+            init_v = np.zeros(self.p.shape)
+            
+        self.v = init_v
+
         self.tau = tau
         self.bloating_r = bloating_r
         
