@@ -37,10 +37,10 @@ class ORCA_Agent:
             v_opt = self.v
         return v_opt
     
-    def safe_v(self,v_pref,obstacles,neigbor_agents):
-        
-        v = cp.Variable(self.v.shape) 
-        # Constraints induced by other agents.
+    def neighbor_constraints(self,neigbor_agents):
+        '''
+            Return the set of u and n vectors representing the ORCA half planes
+        '''
         us,ns = [],[]
         for b in neigbor_agents: 
             vo = VO(self.p,b.p,
@@ -52,12 +52,20 @@ class ORCA_Agent:
             u = vo.u(v_rel)
             if zone_code == 2:
                 n = -u/np.linalg.norm(u)
+                # continue # The agent is not in conflict with neighboring agent b.
             else:
                 n = u/np.linalg.norm(u)
             
             us.append(u)
             ns.append(n)
+        return us, ns
 
+    def safe_v(self,v_pref,obstacles,neigbor_agents):
+        
+        v = cp.Variable(self.v.shape) 
+        
+        # Constraints induced by other agents.
+        us,ns = self.neighbor_constraints(neigbor_agents)
         constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
 
         # Constraints induced by static obstacles
@@ -77,7 +85,7 @@ class ORCA_Agent:
 
         if v is None: # The case where the problem is infeasible.
             # print('infeasible')
-            v = np.zeros(v_prefs.shape) # Temporary solution. To be extended next.
+            v = np.zeros(v_pref.shape) # Temporary solution. To be extended next.
         
         return v
         

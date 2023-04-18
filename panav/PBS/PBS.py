@@ -19,6 +19,21 @@ def PBS(env,vmax,bloating_r,\
         d,K,t0,\
         max_iter = 200,metric = 'flowtime',search_type = 'depth_first'\
         ):
+    '''
+        The MAMP algorithm using PBS as the high-level search and tube-based SAMP as the low-level search.
+        
+        Inputs: 
+            env: panav.env.NavigationEnv object. The path planning environment.
+            
+            vmax,bloating_r,d,K,t0: SAMP parameters.
+                Tip: If the algorithm runs slow, consider reducing the number of segments K.
+
+            max_iter: the maximal iteration of PBS mainloop before force exit and return solution not found.
+
+            metric: the metric used in high-level search, can be either 'flowtime' or 'makespan'.
+
+            search_type: the branching style used in high-level search, can be either 'depth_first'(fast) or 'best_first'(slow).
+    '''
     agents = set(np.arange(len(env.starts)))
     if metric == 'flowtime':
         metric = flowtime
