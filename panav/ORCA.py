@@ -6,7 +6,7 @@ import cvxpy as cp
 class ORCA_Agent:
     def __init__(self,protocol,tau,
                 bloating_r,vmax,
-                 init_p,init_v=None):
+                 init_p,init_v=None,vmin = None):
         
         valid = {0, 1, 2}
         if protocol not in valid:
@@ -26,12 +26,18 @@ class ORCA_Agent:
         
         self.v_opt = np.zeros(self.v.shape)
         self.vmax = vmax
+
+        if vmin is None:
+            self.vmin = 0.01 * vmax
+
+        self.resolving_deadlock = False
     
     def update_v_opt(self,v_pref):
         self.v_opt = self.calc_v_opt(v_pref)
         
-    def update_v(self,v_pref,obstacles,neigbor_agents):
-        self.v = self.safe_v(v_pref,obstacles,neigbor_agents)
+    def update_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule=True):
+        self.v = self.safe_v(v_pref,obstacles,neigbor_agents,
+                                right_hand_rule=right_hand_rule)
     
     def calc_v_opt(self,v_pref):
          # Determine v_opt
@@ -46,6 +52,9 @@ class ORCA_Agent:
     def neighbor_constraints(self,neigbor_agents):
         '''
             Return the set of u and n vectors representing the ORCA half planes
+
+            right_hand_rule: deadlock avoidance mechanism.
+                             If true, perturb the normal vector to the right hand side by a little.
         '''
         us,ns = [],[]
         for b in neigbor_agents: 
@@ -56,44 +65,69 @@ class ORCA_Agent:
             
             zone_code = vo.zones(v_rel)
             u = vo.u(v_rel)
+
             if zone_code == 2:
                 n = -u/np.linalg.norm(u)
                 # continue # The agent is not in conflict with neighboring agent b.
             else:
+                
                 n = u/np.linalg.norm(u)
-            
+
             us.append(u)
             ns.append(n)
         return us, ns
 
-    def safe_v(self,v_pref,obstacles,neigbor_agents):
-        
-        v = cp.Variable(self.v.shape) 
+    def safe_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule = True):
         
         # Constraints induced by other agents.
         us,ns = self.neighbor_constraints(neigbor_agents)
-        constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
-
         # Constraints induced by static obstacles
         obstacle_d = [] 
         for O in obstacles: 
             obstacle_d.append(O.project(self.p) - self.p)
 
-        constraints+=[(d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)) 
+        v = v_pref 
+
+
+        if np.all([(v-(self.v_opt+u/2)).dot(n) >= 0 for u,n in zip(us,ns)])\
+            and np.all([d.dot(v*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
+                      for d in obstacle_d]):
+            return v
+        
+        v = cp.Variable(self.v.shape) 
+        
+        constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
+
+        constraints+=[d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
                       for d in obstacle_d]
 
         # Maximum speed constraint
         constraints.append(cp.norm(v)<= self.vmax)
 
         prob = cp.Problem(cp.Minimize(cp.norm(v-v_pref)),constraints)
-        prob.solve()
-        v = v.value
-
-        if v is None: # The case where the problem is infeasible.
-            # print('infeasible')
-            v = np.zeros(v_pref.shape) # Temporary solution. To be extended next.
         
-        return v
+        prob.solve()
+        v_out = v.value
+
+        if v_out is None: # The case where the problem is infeasible.
+            # print('infeasible') 
+            v_out = np.zeros(v_pref.shape) # Temporary solution. To be extended next.
+        elif np.linalg.norm(v_out)<=self.vmin and right_hand_rule:
+            # print('Potential deadlock')
+            # Potential deadlock, engage the right-hand rule
+            for theta in np.pi * np.array([1/2,1,1/5]):
+                # Rotate v_pref clockwise by theta.
+                v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
+                                    [np.sin(-theta),np.cos(-theta)]]).dot(v_pref)
+
+                prob = cp.Problem(cp.Minimize(cp.norm(v-v_right)),constraints)
+            
+                prob.solve()
+                if np.linalg.norm(v.value)>self.vmin:
+                    v_out = v.value 
+                    break
+
+        return v_out
         
 
 class VO:
