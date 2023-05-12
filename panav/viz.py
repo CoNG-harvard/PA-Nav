@@ -16,16 +16,18 @@ def draw_env(env,paths=[],ax = None):
         ax = plt.gca()
     
     # Plot boundaries
-    xlim = env.limits[0]
-    ylim = env.limits[1]
-    
-    ax.set_xlim(*xlim)
-    ax.set_ylim(*ylim)
 
-    for y in ylim:
-        ax.axhline(y,0,1)
-    for x in xlim:
-        ax.axvline(x,0,1)
+    if env.limits:
+        xlim = env.limits[0]
+        ylim = env.limits[1]
+        
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
+
+        for y in ylim:
+            ax.axhline(y,0,1)
+        for x in xlim:
+            ax.axvline(x,0,1)
         
     # Plot the obstacles
     for o in env.obstacles:
@@ -52,7 +54,8 @@ def draw_env(env,paths=[],ax = None):
     # Use a square aspect ratio
     ax.set_aspect('equal', adjustable='box')
 
-    ax.legend()
+    if env.starts or env.goals:
+        ax.legend()
 
 def draw_obstacle(o,ax):
     verts = o.vertices()
@@ -78,7 +81,7 @@ def draw_goal(o,ax,label = ''):
 
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
-def animation(env,paths,bloating_r,dt):
+def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None):
     '''
         Animate multi-agent trajectories in the given env.
         
@@ -88,8 +91,11 @@ def animation(env,paths,bloating_r,dt):
         
         dt: time interval between two consecutive frames, measured in seconds.
     '''
-    fig = plt.figure()
-    ax = plt.gca()
+    if fig is None:
+        fig = plt.figure()
+    if ax is None:
+        ax = plt.gca()
+
     draw_env(env,paths, ax)
 
     agents = range(len(paths))
@@ -97,11 +103,15 @@ def animation(env,paths,bloating_r,dt):
     # for a in agents:
     #     ax.plot(paths[a][:,0],paths[a][:,1],alpha = 0.5)
 
-    agent_discs = []
-    for a in agents:
-        disc = Circle(paths[a][0,:],bloating_r)
+    if agent_discs is None:
+        agent_discs = []
+        for a in agents:
+            disc = Circle(paths[a][0,:],bloating_r)
+            agent_discs.append(disc)
+
+    for disc in agent_discs:
         ax.add_artist(disc)
-        agent_discs.append(disc)
+        
 
     def init_func():
         return agent_discs

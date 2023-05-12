@@ -12,7 +12,7 @@ from polytope import qhull
 
 
 class NavigationEnv:
-    def __init__(self, limits, obstacles,starts,goals):
+    def __init__(self, limits=[], obstacles=[],starts=[],goals=[]):
 
         self.limits = limits # Boundary limits at each axis. limits[0]-> x axis, limits[1]-> y axis, limits[2]-> z axis.
         # obstacles are Region class objects.
