@@ -115,7 +115,7 @@ class ORCA_Agent:
         elif np.linalg.norm(v_out)<=self.vmin and right_hand_rule:
             # print('Potential deadlock')
             # Potential deadlock, engage the right-hand rule
-            for theta in np.pi * np.array([1/2,1,1/5]):
+            for theta in np.pi * np.array([1/2,1]):
                 # Rotate v_pref clockwise by theta.
                 v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
                                     [np.sin(-theta),np.cos(-theta)]]).dot(v_pref)
