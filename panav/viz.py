@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from shapely.geometry.polygon import Polygon
 
+
 def draw_env(env,paths=[],ax = None):
     '''
         env: the path planning environment.
@@ -54,8 +55,8 @@ def draw_env(env,paths=[],ax = None):
     # Use a square aspect ratio
     ax.set_aspect('equal', adjustable='box')
 
-    if env.starts or env.goals:
-        ax.legend()
+    # if env.starts or env.goals:
+    #     ax.legend()
 
 def draw_obstacle(o,ax):
     verts = o.vertices()
@@ -96,7 +97,7 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None):
     if ax is None:
         ax = plt.gca()
 
-    draw_env(env,paths, ax)
+    
 
     agents = range(len(paths))
 
@@ -112,6 +113,7 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None):
     for disc in agent_discs:
         ax.add_artist(disc)
         
+    draw_env(env,paths, ax)
 
     def init_func():
         return agent_discs
@@ -122,5 +124,49 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None):
                 disc.center = paths[a][0,t],paths[a][1,t]
         return agent_discs
 
+    handles, labels = ax.get_legend_handles_labels()
+    if len(labels)>0:
+        ax.legend()
+
     anim = FuncAnimation(fig,animate,frames = max([p.shape[-1] for p in paths]),blit=True,interval = dt*1000)
+    return anim
+
+
+
+import networkx as nx
+from panav.util import interpolate_positions
+from panav.env import NavigationEnv
+def animate_MAPF_R(G,node_locs,obs_paths,agent_paths,dt,bloating_r):
+    
+    def path_to_traj(G_plan):
+        x = np.vstack([node_locs[s] for s,t in G_plan]).T
+        t = np.array([t for s,t in G_plan])
+        t,x = interpolate_positions(t,x,dt)
+        return x
+    
+    obs_trajs,agent_trajs = [[path_to_traj(p) for p in paths] for paths in (obs_paths,agent_paths)]
+        
+    fig = plt.figure()
+    ax = plt.gca()
+    
+    obs_discs,agent_discs = [],[]
+    
+    for i,traj in enumerate(obs_trajs):
+        obs_discs.append(Circle(traj[0],bloating_r,fc='red',ec = 'red'
+                                ,label='Obstacle' if i==0 else None))
+
+    for i,traj in enumerate(agent_trajs):
+        agent_discs.append(Circle(traj[0],bloating_r,fc='green',ec = 'green'
+                                ,label='Agent' if i==0 else None))
+    
+        
+    ax.set_aspect('equal')
+
+    nx.draw_networkx(G, {n:node_locs[n] for n in G},ax,node_size=150)
+    ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
+
+    
+    env = NavigationEnv()
+    anim  = animation(env,obs_trajs + agent_trajs,bloating_r,dt,
+                      fig,ax,obs_discs + agent_discs)
     return anim
