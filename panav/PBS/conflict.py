@@ -65,11 +65,12 @@ def seg_conflict(ta,pa,tb,pb,ra,rb):
     v = va-vb
     u = pa[:,0]-pb[:,0] - (va*ta[0]-vb*tb[0])
 
-    t_star = -u.dot(v)/v.dot(v)
+    if v.dot(v)>0:
+        t_star = -u.dot(v)/v.dot(v)
+        if lb<=t_star<=ub:
+            return np.linalg.norm(u + t_star*v)<= ra+rb  # The minimal distance is attained when t=t_star.
     
-    if lb<=t_star<=ub:
-        return np.linalg.norm(u + t_star*v)<= ra+rb  # The minimal distance is attained when t=t_star.
-    else:
-        return np.linalg.norm(u + lb * v)<= ra+rb \
-            or np.linalg.norm(u + ub * v)<= ra+rb 
-            # The minimal distance is attained when t=lb or ub.
+    return np.linalg.norm(u + lb * v)<= ra+rb \
+        or np.linalg.norm(u + ub * v)<= ra+rb 
+        # The minimal distance is attained when t=lb or ub.
+        # This happens when v=0, or v!=0 and t_star is outside (lb,ub)

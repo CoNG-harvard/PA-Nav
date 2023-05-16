@@ -3,7 +3,7 @@ import numpy as np
 from queue import PriorityQueue
 
 
-def SIPP(G,node_locs,start,goal, obs_traj, v_max, bloating_r):
+def SIPP(G,node_locs,start,goal, obs_trans, v_max, bloating_r):
     '''
         G: a networkx graph.
 
@@ -11,7 +11,7 @@ def SIPP(G,node_locs,start,goal, obs_traj, v_max, bloating_r):
 
         start, goal: start and goal node(nodes in G).
         
-        obs_traj: the dynamic obstacle trajectory, in {(s_i,u_i,t1_i,t2_i):i=0,1,...} form.
+        obs_trans: the transitions of the dynamic obstacle(s), in {(s_i,u_i,t1_i,t2_i):i=0,1,...} form.
             
             If s_i!=u_i, then (s_i,u_i) should be an edge in G.
             
@@ -22,7 +22,7 @@ def SIPP(G,node_locs,start,goal, obs_traj, v_max, bloating_r):
        bloating_r:  the bloating radius for the agent and obstaclce.
     '''
     compute_edge_weights(G,node_locs,v_max)
-    compute_safe_intervals(G,node_locs,obs_traj,v_max,bloating_r)
+    compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r)
     
     hScore = dict(nx.shortest_path_length(G,weight = 'weight'))
     
@@ -30,14 +30,19 @@ def SIPP(G,node_locs,start,goal, obs_traj, v_max, bloating_r):
 
 
 
-def G_plan_to_obs_traj(G_plan):
-    obs_traj = []
-    for i in range(len(G_plan)-1):
-        obs_traj.append((G_plan[i][0],G_plan[i+1][0],
-                         G_plan[i][1],G_plan[i+1][1]))
-    return obs_traj
+def plan_to_transitions(plan):
+    '''
+        plan: (s_i,t_i) pairs, t_i increases with i.
 
-def compute_safe_intervals(G,node_locs,obs_traj,v_max,bloating_r):
+        Output: (s,u,t1,t2) transition pairs
+    '''
+    transitions = []
+    for i in range(len(plan)-1):
+        transitions.append((plan[i][0],plan[i+1][0],
+                         plan[i][1],plan[i+1][1]))
+    return transitions
+
+def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
     '''
         Compute the safe intervals of the nodes and edges of G, as G's node- and edge-attributes in place.
     '''
@@ -50,7 +55,7 @@ def compute_safe_intervals(G,node_locs,obs_traj,v_max,bloating_r):
     nx.set_node_attributes(G,{s:[] for s in G},'safe_intervals')
 
 
-    for o in obs_traj:
+    for o in obs_trans:
         u,v,t1,t2 = o
         
         if u==v:
@@ -134,28 +139,28 @@ def SIPP_core(G,start,goal,hScore):
     transition_duration = {}
 
     def recover_path(final_state,start):
-        path = []
+        path_temp = []
         curr = final_state
         while curr != (start,0):
-            path.append((curr[0],transition_duration[curr]))
+            path_temp.append((curr[0],transition_duration[curr]))
             curr = cameFrom[curr]
         
-        path.reverse()
+        path_temp.reverse()
 
-        transitions = [(start,0)]
+        plan = [(start,0)]
         prev_node = start
         t_prev = 0
-        for i in range(len(path)):
-            dest_node,duration = path[i]
+        for i in range(len(path_temp)):
+            dest_node,duration = path_temp[i]
             
             if t_prev<duration[0]:# The agent waited at prev node
-                transitions.append((prev_node,duration[0]))
+                plan.append((prev_node,duration[0]))
             
-            transitions.append((dest_node,duration[1]))
+            plan.append((dest_node,duration[1]))
             t_prev = duration[1]
             prev_node = dest_node
             
-        return transitions
+        return plan
 
 
     path = []
