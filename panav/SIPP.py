@@ -25,7 +25,7 @@ def SIPP(G,node_locs,start,goal, obs_trans, v_max, bloating_r):
     '''
     if 'weight' not in list(G.edges(data=True))[0][-1].keys():
         compute_edge_weights(G,node_locs,v_max)
-        
+
     compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r)
     
     hScore = dict(nx.shortest_path_length(G,weight = 'weight'))
@@ -44,6 +44,9 @@ def plan_to_transitions(plan):
     for i in range(len(plan)-1):
         transitions.append((plan[i][0],plan[i+1][0],
                          plan[i][1],plan[i+1][1]))
+    
+    transitions.append((plan[-1][0],plan[-1][0],plan[-1][1],np.inf)) # Experimental. This lets the agent to stay at its goal and block other agents.
+
     return transitions
 
 def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
@@ -69,11 +72,16 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
             G.edges[v,u]['unsafe_intervals'].append([t1-L/v_max,t2])
             
             vel = L/(t2-t1)
-            self_traverse_t = 2*np.sqrt(2)*bloating_r/vel
+            # self_traverse_t = 2*np.sqrt(2)*bloating_r/vel
+            # self_traverse_t = 3*bloating_r/vel
+            self_traverse_t = 4*bloating_r/vel
+
             '''
                 self_traverse_t is a parameter we can change to tune the conservativeness collision avoidance.
-                The 2*sqrt(2) coefficient above is the default value, corresponding to vel=v_max, and the
-                adjacent two edges are in 90-degree angle. See the following illustration.
+                The coefficient 4 above is the default value, corresponding to sparing a generous space between two agents.
+                Use coefficient 4 when calling SIPP in PBS_SIPP.
+
+                A tighter coefficient could be 2*sqrt(2), corresponding to adjacent two edges are in 90-degree angle. See the following illustration.
 
                 O
                   \
@@ -109,7 +117,6 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
 
 def SIPP_core(G,start,goal,hScore):
     OPEN = PriorityQueue()
-    t0 = 0
 
     def safe_interval_index(t,s):
         '''
@@ -125,16 +132,11 @@ def SIPP_core(G,start,goal,hScore):
         
         return None
 
-    safe_idx = safe_interval_index(t0,start)
-
-    if safe_idx is None:
-        print('The starting time {} is unsafe at node {}'.format(t0,start))
-
-    gScore = {(start,safe_idx):0}
+    gScore = {(start,0):0}
     # gScore[s,idx,k] keeps track of the travel time from the start node to 
     # node s, arriving at the idx'th safe interval of s.
 
-    OPEN.put((0,(start,safe_idx))) 
+    OPEN.put((0,(start,0))) 
 
     # Items in the priority queue are in the form (gScore, item), sorted by value. 
     # The item with the smallest value is placed on top.
@@ -169,7 +171,7 @@ def SIPP_core(G,start,goal,hScore):
 
     path = []
     while not OPEN.empty():
-        curr_fscore,(s,i) = OPEN.get() # Remove the (s, i, k) with the smallest gScore.
+        curr_fscore,(s,i) = OPEN.get() # Remove the (s, i) with the smallest gScore.
         if s == goal:
             return recover_path((s,i),start)
 

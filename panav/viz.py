@@ -82,7 +82,7 @@ def draw_goal(o,ax,label = ''):
 
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
-def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None):
+def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_path_lines = True):
     '''
         Animate multi-agent trajectories in the given env.
         
@@ -107,22 +107,35 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None):
     if agent_discs is None:
         agent_discs = []
         for a in agents:
-            disc = Circle(paths[a][0,:],bloating_r)
+            disc = Circle(paths[a][:,0],bloating_r)
             agent_discs.append(disc)
 
     for disc in agent_discs:
         ax.add_artist(disc)
+
+    agent_ID_text = []
+
+    for a in agents:
+        agent_ID_text.append(\
+            ax.text(*paths[a][:,0],str(a),
+            ha='center',va='center'))
+
         
-    draw_env(env,paths, ax)
+    if hide_path_lines:
+        draw_env(env,[], ax)
+    else:
+        draw_env(env,paths, ax)
+
 
     def init_func():
-        return agent_discs
+        return agent_discs+agent_ID_text
 
     def animate(t):
-        for a,disc in zip(agents,agent_discs):
+        for a,disc,txt in zip(agents,agent_discs,agent_ID_text):
             if t<paths[a].shape[-1]:
                 disc.center = paths[a][0,t],paths[a][1,t]
-        return agent_discs
+                txt.set_position((paths[a][0,t],paths[a][1,t]))
+        return agent_discs+agent_ID_text
 
     handles, labels = ax.get_legend_handles_labels()
     if len(labels)>0:
@@ -135,8 +148,11 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None):
 
 import networkx as nx
 from panav.util import interpolate_positions
-from panav.env import NavigationEnv
-def animate_MAPF_R(G,node_locs,obs_paths,agent_paths,dt,bloating_r):
+from panav.env import NavigationEnv, box_2d_center
+def animate_MAPF_R(G,node_locs,
+                obs_paths,agent_paths,
+                dt,bloating_r,
+                start_nodes=None,goal_nodes=None):
     
     def path_to_traj(G_plan):
         x = np.vstack([node_locs[s] for s,t in G_plan]).T
@@ -144,8 +160,19 @@ def animate_MAPF_R(G,node_locs,obs_paths,agent_paths,dt,bloating_r):
         t,x = interpolate_positions(t,x,dt)
         return x
     
+    start_box_side = goal_box_side = bloating_r * 2
+
+    starts = []
+    # if start_nodes is not None:
+    #     starts = [box_2d_center(node_locs[s],start_box_side) for s in start_nodes]
+
+    goals = []
+    if goal_nodes is not None:
+        goals = [box_2d_center(node_locs[s],goal_box_side) for s in goal_nodes]
+
+
     obs_trajs,agent_trajs = [[path_to_traj(p) for p in paths] for paths in (obs_paths,agent_paths)]
-        
+
     fig = plt.figure()
     ax = plt.gca()
     
@@ -162,11 +189,11 @@ def animate_MAPF_R(G,node_locs,obs_paths,agent_paths,dt,bloating_r):
         
     ax.set_aspect('equal')
 
-    nx.draw_networkx(G, {n:node_locs[n] for n in G},ax,node_size=150)
+    nx.draw_networkx(G, {n:node_locs[n] for n in G},ax,with_labels=False,node_size=5)
     ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
 
     
-    env = NavigationEnv()
+    env = NavigationEnv(starts = starts,goals=goals)
     anim  = animation(env,obs_trajs + agent_trajs,bloating_r,dt,
                       fig,ax,obs_discs + agent_discs)
     return anim
