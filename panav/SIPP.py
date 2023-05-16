@@ -20,8 +20,12 @@ def SIPP(G,node_locs,start,goal, obs_trans, v_max, bloating_r):
        v_max: the velocity our agent is expected to travel at.
 
        bloating_r:  the bloating radius for the agent and obstaclce.
+
+       Output: a single-agent plan on G in the form of [(s_i,t_i) for i=0,1,2,3...]
     '''
-    compute_edge_weights(G,node_locs,v_max)
+    if 'weight' not in list(G.edges(data=True))[0][-1].keys():
+        compute_edge_weights(G,node_locs,v_max)
+        
     compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r)
     
     hScore = dict(nx.shortest_path_length(G,weight = 'weight'))
