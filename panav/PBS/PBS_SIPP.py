@@ -71,7 +71,7 @@ def PBS_SIPP(G,node_locs,starts,goals,\
         cost, parent_node = OPEN.pop()
         solution = PT.get_solution(parent_node)
         
-        conflict = MAPFR_conflict(solution,node_locs,bloating_r) # Look for the first conflict.
+        conflict = MAPFR_conflict(G,solution,node_locs,bloating_r) # Look for the first conflict.
         
         if conflict is None:
             return solution, cost

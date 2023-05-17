@@ -53,8 +53,7 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
     '''
         Compute the safe intervals of the nodes and edges of G, as G's node- and edge-attributes in place.
     '''
-
-
+   
     nx.set_edge_attributes(G,{e:[] for e in G.edges},'unsafe_intervals')
     nx.set_edge_attributes(G,{e:[] for e in G.edges},'safe_intervals')
 
@@ -63,14 +62,16 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
 
 
     for o in obs_trans:
+        # if len(o)==4: # There is only a single edge between u,v, no parallel edges.
         u,v,t1,t2 = o
+        # elif len(o)==5:
+        #     u,v,route,t1,t2 = o # There could be multiple parallel edges between u,v. The 'route' variable denote which of the parallel edges is taken. 
+
         
         if u==v:
             G.nodes[u]['unsafe_intervals'].append([t1,t2])
         else:
             L = np.linalg.norm(node_locs[u]-node_locs[v])
-            G.edges[v,u]['unsafe_intervals'].append([t1-L/v_max,t2])
-            
             vel = L/(t2-t1)
             # self_traverse_t = 2*np.sqrt(2)*bloating_r/vel
             # self_traverse_t = 3*bloating_r/vel
@@ -93,16 +94,22 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
                 The SIPP only solves the problem given the safe intervals.
             '''
 
-            if v_max>=vel: # The agent chases the obstacle
-                gap_t = ((v_max-vel)*(t2-t1) + 2* bloating_r)/v_max
-                G.edges[u,v]['unsafe_intervals'].append([t1,np.min([t2,t1+gap_t])])
-            else: # The obstacle chases the agent
-                gap_t = ((vel-v_max)*(t2-t1) + 2* bloating_r)/v_max
-                G.edges[u,v]['unsafe_intervals'].append([np.max([0,t1-gap_t]),t1])
-
             # The following are caused by agent touching the start and nodes when traversing the edge.
             G.nodes[u]['unsafe_intervals'].append([t1,t1+self_traverse_t])
             G.nodes[v]['unsafe_intervals'].append([t2-self_traverse_t,t2])
+            
+            if get_edge_type(G,u,v) == 'hard': # Consider edge constraints only on hard edges.
+                
+                G.edges[v,u]['unsafe_intervals'].append([t1-L/v_max,t2]) # Constraint caused by opposing agents.
+
+                
+                if v_max>=vel: # The agent chases the obstacle
+                    gap_t = ((v_max-vel)*(t2-t1) + 2* bloating_r)/v_max
+                    G.edges[u,v]['unsafe_intervals'].append([t1,np.min([t2,t1+gap_t])])
+                else: # The obstacle chases the agent
+                    gap_t = ((vel-v_max)*(t2-t1) + 2* bloating_r)/v_max
+                    G.edges[u,v]['unsafe_intervals'].append([np.max([0,t1-gap_t]),t1])
+
         
 
     for i in G:
@@ -110,8 +117,8 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
         G.nodes[i]['safe_intervals'] = unsafe_to_safe( G.nodes[i]['unsafe_intervals'])
 
     for e in G.edges:
-        G.edges[e]['unsafe_intervals']=merge_intervals(G.edges[e]['unsafe_intervals'])
-        G.edges[e]['safe_intervals']=unsafe_to_safe(G.edges[e]['unsafe_intervals'])
+        G.edges[e]['unsafe_intervals'] = merge_intervals(G.edges[e]['unsafe_intervals'])
+        G.edges[e]['safe_intervals'] = unsafe_to_safe(G.edges[e]['unsafe_intervals'])
 
 
 
@@ -256,4 +263,12 @@ def intersection(interval1,interval2):
         return None
     else:
         return (lb,ub)
+
+def get_edge_type(G,u,v):
+    edge_type = 'hard'
+    
+    if 'edge_type' in G.edges[u,v].keys():
+        edge_type = G.edges[u,v]['edge_type']
+    return edge_type
+
                                       

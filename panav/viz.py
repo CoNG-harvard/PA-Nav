@@ -144,11 +144,36 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_p
     anim = FuncAnimation(fig,animate,frames = max([p.shape[-1] for p in paths]),blit=True,interval = dt*1000)
     return anim
 
+def draw_soft_hard(G,node_locs,ax=None, with_labels=False,node_size=5):
+    '''
+        Visualize a graph with soft and hard edges distinction.
+        
+        Hard edges: black, solid edges.
+        Soft edges: green, dashed edges.
+        
+        If the graph does not have an edge attribute called 'edge_type', treat all edges as hard edges.
+    '''
+    if ax is None:
+        ax = plt.gca()
+    
+    if 'edge_type' not in list(G.edges(data=True))[0][-1].keys():
+        nx.draw_networkx(G,node_locs,ax,with_labels=with_labels,node_size=node_size)
+    else:
+        hard_subgraph = nx.DiGraph()
+        hard_subgraph.add_edges_from([e for e in G.edges if G.edges[e]['edge_type']=='hard'])
 
+        soft_subgraph = nx.DiGraph()
+        soft_subgraph.add_edges_from([e for e in G.edges if G.edges[e]['edge_type']=='soft'])
+
+
+        nx.draw_networkx(hard_subgraph,node_locs,ax,with_labels=with_labels,node_size=node_size)
+        
+        nx.draw_networkx(soft_subgraph,node_locs,ax,with_labels=with_labels,style = (0,(10.0,10.0)),edge_color = 'green',node_size=node_size)
 
 import networkx as nx
 from panav.util import interpolate_positions
 from panav.env import NavigationEnv, box_2d_center
+
 def animate_MAPF_R(G,node_locs,
                 obs_paths,agent_paths,
                 dt,bloating_r,
@@ -189,7 +214,7 @@ def animate_MAPF_R(G,node_locs,
         
     ax.set_aspect('equal')
 
-    nx.draw_networkx(G, {n:node_locs[n] for n in G},ax,with_labels=False,node_size=5)
+    draw_soft_hard(G, {n:node_locs[n] for n in G},ax,with_labels=False,node_size=5)
     ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
 
     

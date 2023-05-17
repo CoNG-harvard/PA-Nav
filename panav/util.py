@@ -1,7 +1,7 @@
 import numpy as np
 import itertools
 
-
+ 
 def unit_cube(d):
     '''
         Return the vertices of a d-dimensional unit cube.
