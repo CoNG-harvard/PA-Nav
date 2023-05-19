@@ -69,7 +69,8 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
 
         
         if u==v:
-            G.nodes[u]['unsafe_intervals'].append([t1,t2])
+            if get_node_type(G,u)=='hard':
+                G.nodes[u]['unsafe_intervals'].append([t1,t2])
         else:
             L = np.linalg.norm(node_locs[u]-node_locs[v])
             vel = L/(t2-t1)
@@ -271,4 +272,10 @@ def get_edge_type(G,u,v):
         edge_type = G.edges[u,v]['edge_type']
     return edge_type
 
+def get_node_type(G,u):
+    node_type = 'soft'
+    
+    if 'node_type' in G.nodes[u].keys():
+        node_type = G.nodes[u]['node_type']
+    return node_type
                                       

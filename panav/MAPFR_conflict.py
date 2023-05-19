@@ -1,6 +1,6 @@
 from panav.PBS.conflict import seg_conflict
 import numpy as np
-from panav.SIPP import plan_to_transitions, get_edge_type
+from panav.SIPP import plan_to_transitions, get_edge_type,get_node_type
 def MAPFR_pairwise_conflict(G,plan1,plan2,node_locs,bloating_r):
     '''
         plan1 and plan2: lists containing (u_i,t_i) waypoints.
@@ -9,6 +9,9 @@ def MAPFR_pairwise_conflict(G,plan1,plan2,node_locs,bloating_r):
 
     for u,v, t1,t2 in plan_to_transitions(plan1):
         
+        if u==v and get_node_type(G,u)=='soft': # Skip soft nodes
+            continue
+            
         if u!=v and get_edge_type(G,u,v) == 'soft': # Skip soft edges
             continue
 
