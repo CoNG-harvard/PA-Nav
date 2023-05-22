@@ -177,8 +177,8 @@ from panav.env import NavigationEnv, box_2d_center
 def animate_MAPF_R(G,node_locs,
                 obs_paths,agent_paths,
                 dt,bloating_r,
-                start_nodes=None,goal_nodes=None,interpolate = False):
-    
+                start_nodes=None,goal_nodes=None,interpolate = True):
+
     def path_to_traj(G_plan):
         x = np.vstack([node_locs[s] for s,t in G_plan]).T
         t = np.array([t for s,t in G_plan])
