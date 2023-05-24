@@ -3,7 +3,7 @@ from scipy.spatial import ConvexHull
 import pypoman as ppm
 import polytope as pc
 import shapely
-from shapely import affinity
+from shapely import affinity, Polygon
 import cvxpy as cp
 
 from panav.util import unit_cube
@@ -35,7 +35,7 @@ class Region:
             Compute the vertices of a general polytope.
         '''
         verts = np.array(ppm.duality.compute_polytope_vertices(self.A, self.b))
-        return verts[ConvexHull(vert).vertices,:]
+        return Polygon(verts[ConvexHull(vert).vertices,:])
 
     def project(self, x):
         '''
@@ -56,7 +56,7 @@ class PolygonRegion(Region):
         self.A, self.b = self.poly.A, self.poly.b
 
     def vertices(self):
-        return self.verts
+        return Polygon(self.verts)
         
 class Box2DRegion(Region):
     
