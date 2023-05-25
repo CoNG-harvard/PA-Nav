@@ -28,10 +28,11 @@ def bin_search_tunnel(O1,O2,bloating_r,extension_direction=None,ext_l0=1.0,bin_s
         expand = True
         while right-left>bin_search_esp:
 
-            shifted_neck,projs,dist = extension_sticks(O1,O2,
+            shifted_neck,dist,projs = extension_sticks(O1,O2,
                                            np.sign(extension_direction)*(left+right)/2) 
 
-            underhit = dist <= 2*bloating_r
+            # print('dist',dist,'shifted_neck',shifted_neck)
+            underhit = dist <= 4*bloating_r
 
             if underhit:
                 if expand: right *=2
@@ -80,16 +81,16 @@ def extension_sticks(O1,O2,ext_l):
 
         dist = prob.solve()
 
-        if dist <np.inf:
-            projs.append(x_proj.value)
-            dists.append(dist)
+        projs.append(x_proj.value)
+        dists.append(dist)
     
     if len(projs)==0:
-        return shifted_neck.coords[:],[], np.inf
+        return shifted_neck.coords[:], np.inf,[]
     
     # print(projs,dists,shift_origin)
-    short_end = projs[np.argmin(dists)]
-    opposite_end = shift_origin - (short_end-shift_origin)
-    return shifted_neck.coords[:],[short_end,opposite_end], np.min(dists)
+    # short_end = projs[np.argmin(dists)]
+    # opposite_end = shift_origin - (short_end-shift_origin)
+    # return shifted_neck.coords[:],[short_end,opposite_end], np.min(dists)
 
+    return shifted_neck.coords[:], np.sum(dists), projs
 
