@@ -31,6 +31,62 @@ class Tunnel:
                 self.passing[(j,i)]= []
                 self.passing[(i,j)]= []
 
+class TunnelPassingControl:
+    def __init__(self,env,agent_plans,bloating_r):
+        self.tunnels = detect_tunnels(env,bloating_r)
+        self.agents = set(np.arange(len(agent_plans)))
+        self.passage = {a:[] for a in self.agents}
+        
+        for a,x in zip(self.agents, agent_plans):
+            for tun_id, tunnel in enumerate(self.tunnels):
+                ent,ex = get_entry_exit(tunnel,x)
+                
+                if ent is not None and ex is not None:
+                    self.passage[a].append((tun_id,*ent,*ex))
+        
+        self.next_passage = {}
+        for a in self.agents:
+            self.next_passage[a] = None if len(self.passage[a])==0\
+                                    else self.passage[a].pop(0)
+    
+    def update_passing_state(self,agent,agent_loc,
+                             waiting_radius, exit_radius):
+        
+        next_pass = self.next_passage[agent]
+        
+        if next_pass is not None:
+            tun_id, ent_fid,ent_wpid,ent_loc,ex_fid,ex_wpid,ex_loc \
+            = next_pass
+            
+            tunnel = self.tunnels[tun_id]
+            
+            # See if the agent has come close to the tunnel entrance.
+            if np.linalg.norm(ent_loc-agent_loc)<=waiting_radius\
+            and agent not in tunnel.passing[(ent_fid,ex_fid)]:
+                if agent not in tunnel.waiting[(ent_fid,ex_fid)]:
+                        tunnel.waiting[(ent_fid,ex_fid)].append(agent)
+                        # Add the agent to the waiting list
+
+            # print('passing',tunnel.passing[(ent_fid,ex_fid)],tunnel.passing[(ex_fid,ent_fid)])
+            if agent in tunnel.waiting[(ent_fid,ex_fid)]:
+                if agent == tunnel.waiting[(ent_fid,ex_fid)][0]\
+                and len(tunnel.passing[(ex_fid,ent_fid)])==0: # No agent is passing the opposite direction
+                    tunnel.waiting[(ent_fid,ex_fid)].remove(agent)
+                    tunnel.passing[(ent_fid,ex_fid)].append(agent)
+                else:
+                    return 'wait'
+            
+            # See if the agent is at an exit point
+            if np.linalg.norm(ex_loc-agent_loc)<=exit_radius:
+                
+                tunnel.passing[(ent_fid,ex_fid)].remove(agent)
+
+                if len(self.passage[agent])>0:
+                    self.next_passage[agent] = self.passage[agent].pop(0)
+                else:
+                    self.next_passage[agent] = None
+                
+        return 'pass'
 def get_entry_exit(tun,x):
     '''
         Return trajectory x's entry and exit points of the tunnel.
@@ -44,8 +100,8 @@ def get_entry_exit(tun,x):
     
     face_lines = [LineString(f) for f in tun.faces]
 
-    entry = []
-    exit = []
+    entry = None
+    exit = None
 
     for i in range(x.shape[-1]-1):
         seg = LineString((x[:,i],x[:,i+1]))
@@ -54,9 +110,9 @@ def get_entry_exit(tun,x):
                 ent_sgn = np.sign(tun.perps[fid].dot(x[:,i+1]-x[:,i]))
                 # print(fid,ent_sgn)
                 if ent_sgn == 1:
-                    entry.append((fid,i,x[:,i]))
+                    entry = (fid,i,x[:,i])
                 elif ent_sgn == -1:
-                    exit.append((fid,i+1,x[:,i+1]))
+                    exit = (fid,i+1,x[:,i+1])
 
     return entry,exit
 
