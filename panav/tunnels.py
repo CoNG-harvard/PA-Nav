@@ -8,6 +8,21 @@ from scipy.spatial import ConvexHull
 
 import cvxpy as cp
 
+class Tunnel:
+    def __init__(self,face1,n1,face2,n2):
+        '''
+            face1: [point1,point2], a list of two vectors. One face of the tunnel.
+            face2: same format as face 1.
+
+            n1: the normal vector of face1 pointing inside the tunnel.
+            n2: the normal vector of face2 pointing inside the tunnel.
+        '''
+        self.faces = [face1,face2]
+        self.perps = [n1,n2]
+        verts = np.array(face1+face2)
+        self.region = Polygon(verts[ConvexHull(verts).vertices,:])
+
+
 def detect_tunnels(env,bloating_r):
     obstacles = env.obstacles
     tunnels = []
@@ -17,18 +32,31 @@ def detect_tunnels(env,bloating_r):
         
             tun = bin_search_tunnel(O1,O2,bloating_r)
             if tun is not None:
-                tunnels.append(tun)
+                (f1,d1,n1),(f2,d2,n2) = tun
+                tunnels.append(Tunnel(f1,n1,f2,n2))
     return tunnels
 
 def bin_search_tunnel(O1,O2,bloating_r,extension_direction=None,ext_l0=1.0,bin_search_esp = 0.05):
-    def search(extension_direction):    
+    '''
+        Output: 
+
+    '''
+    def search(extension_direction):
+        '''
+            Output: 
+                shifted_neck: the line segment defining the entrance and exit of the tunnel.
+                
+                dist: the extended distance to O1,O2, along the direction of shifted_neck.
+                
+                normal_vec: the vector perpendicular to shifted_neck, pointing into the tunnel.
+        '''    
         
         # Binary search for the tunnel region
         left, right = 0, ext_l0*2
         expand = True
         while right-left>bin_search_esp:
 
-            shifted_neck,dist,projs = extension_sticks(O1,O2,
+            shifted_neck,dist,normal_vec = extension_sticks(O1,O2,
                                            np.sign(extension_direction)*(left+right)/2) 
 
             # print('dist',dist,'shifted_neck',shifted_neck)
@@ -41,7 +69,7 @@ def bin_search_tunnel(O1,O2,bloating_r,extension_direction=None,ext_l0=1.0,bin_s
                 right = (left+right)/2
                 expand = False
 
-        return shifted_neck,projs,dist
+        return shifted_neck,dist,normal_vec 
     
     pts = nearest_points(O2.vertices(),O1.vertices())
     obs_dist = pts[0].distance(pts[1])
@@ -49,9 +77,7 @@ def bin_search_tunnel(O1,O2,bloating_r,extension_direction=None,ext_l0=1.0,bin_s
         return None
 
     if extension_direction is None: 
-        (p1,_,d1), (p2,_,d2) = search(1),search(-1)
-        verts = np.array(p1+p2)
-        return Polygon(verts[ConvexHull(verts).vertices,:])
+        return search(1),search(-1)
     else: return search(extension_direction)
 
 def extension_sticks(O1,O2,ext_l):
@@ -92,5 +118,6 @@ def extension_sticks(O1,O2,ext_l):
     # opposite_end = shift_origin - (short_end-shift_origin)
     # return shifted_neck.coords[:],[short_end,opposite_end], np.min(dists)
 
-    return shifted_neck.coords[:], np.sum(dists), projs
+    normal_vec = -np.sign(ext_l)*direction
+    return shifted_neck.coords[:], np.sum(dists), normal_vec
 
