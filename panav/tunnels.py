@@ -22,6 +22,43 @@ class Tunnel:
         verts = np.array(face1+face2)
         self.region = Polygon(verts[ConvexHull(verts).vertices,:])
 
+        self.waiting = {}
+        self.passing = {}
+        for i in range(len(self.faces)):
+            for j in range(i+1,len(self.faces)):
+                self.waiting[(j,i)]= []
+                self.waiting[(i,j)]= []
+                self.passing[(j,i)]= []
+                self.passing[(i,j)]= []
+
+def get_entry_exit(tun,x):
+    '''
+        Return trajectory x's entry and exit points of the tunnel.
+
+        Each element in entry/exit list: (fid,i,x[:,i])
+
+            fid: the id of the face to be crossed.
+            i: the index of the entry/exit point within trajectory x.
+            x[:,i]: the entry/exit point location.
+    '''
+    
+    face_lines = [LineString(f) for f in tun.faces]
+
+    entry = []
+    exit = []
+
+    for i in range(x.shape[-1]-1):
+        seg = LineString((x[:,i],x[:,i+1]))
+        for fid, fl in enumerate(face_lines):
+            if seg.intersects(fl):
+                ent_sgn = np.sign(tun.perps[fid].dot(x[:,i+1]-x[:,i]))
+                # print(fid,ent_sgn)
+                if ent_sgn == 1:
+                    entry.append((fid,i,x[:,i]))
+                elif ent_sgn == -1:
+                    exit.append((fid,i+1,x[:,i+1]))
+
+    return entry,exit
 
 def detect_tunnels(env,bloating_r):
     obstacles = env.obstacles
