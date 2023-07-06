@@ -30,6 +30,9 @@ class Tunnel:
                 self.waiting[(i,j)]= []
                 self.passing[(j,i)]= []
                 self.passing[(i,j)]= []
+    
+    def passable(self,ent_fid,ex_fid):
+        return len(self.passing[(ex_fid,ent_fid)])==0 # No agent is passing the opposite direction
 
 class TunnelPassingControl:
     def __init__(self,env,agent_plans,bloating_r):
@@ -48,7 +51,7 @@ class TunnelPassingControl:
         for a in self.agents:
             self.next_passage[a] = None if len(self.passage[a])==0\
                                     else self.passage[a].pop(0)
-    
+
     def update_passing_state(self,agent,agent_loc,
                              waiting_radius, exit_radius):
         
@@ -70,7 +73,7 @@ class TunnelPassingControl:
             # print('passing',tunnel.passing[(ent_fid,ex_fid)],tunnel.passing[(ex_fid,ent_fid)])
             if agent in tunnel.waiting[(ent_fid,ex_fid)]:
                 if agent == tunnel.waiting[(ent_fid,ex_fid)][0]\
-                and len(tunnel.passing[(ex_fid,ent_fid)])==0: # No agent is passing the opposite direction
+                    and tunnel.passable(ex_fid,ent_fid): 
                     tunnel.waiting[(ent_fid,ex_fid)].remove(agent)
                     tunnel.passing[(ent_fid,ex_fid)].append(agent)
                 else:

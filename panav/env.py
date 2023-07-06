@@ -85,17 +85,20 @@ def line_seg_to_obstacle(x1,x2,bloating_r):
         Convert a line segment x1-x2 to a box obstacle with width 2*bloating_r
     '''
     b = shapely.geometry.LineString([x1,x2])
-    b_p = affinity.scale(affinity.rotate(b,90),
-                 xfact = 2*bloating_r/b.length,
-                 yfact = 2*bloating_r/b.length,
-              )
+    if b.length == 0:
+        return box_2d_center(x1,2*bloating_r)
+    else:
+        b_p = affinity.scale(affinity.rotate(b,90),
+                     xfact = 2*bloating_r/b.length,
+                     yfact = 2*bloating_r/b.length,
+                  )
 
-    d = (x2-x1)*(1/2+bloating_r/b.length)
+        d = (x2-x1)*(1/2+bloating_r/b.length)
 
-    side_1 = affinity.translate(b_p,*d)
-    side_2 = affinity.translate(b_p,*(-d))
-    
-    return PolygonRegion([*side_1.coords,*side_2.coords])
+        side_1 = affinity.translate(b_p,*d)
+        side_2 = affinity.translate(b_p,*(-d))
+        
+        return PolygonRegion([*side_1.coords,*side_2.coords])
 
 def wp_to_tube_obstacle(t1,t2,p1,p2,bloating_r):
     '''

@@ -90,8 +90,10 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
     prob = cp.Problem(cp.Minimize(t[-1]),constraints)
 
     prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
-    return t.value,x.value
-
+    if t.value is not None:
+        return t.value,x.value
+    else:
+        return None
 
 def Tube_Planning(env, start, goal, vmax, bloating_r,
                     obs_trajectories=[],\

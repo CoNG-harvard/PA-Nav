@@ -4,9 +4,10 @@ import networkx as nx
 import numpy as np
 
 from panav.PBS.HighLevelSearchTree import PriorityTree, SearchNodeContainer
-from panav.SAMP import Tube_Planning
+from panav.SAMP import Tube_Planning,SA_MILP_Planning
 from panav.PBS.conflict import MA_plan_conflict
 from panav.util import unique_tx
+from panav.env import line_seg_to_obstacle
 
 
 def flowtime(plan):
@@ -17,7 +18,8 @@ def makespan(plan):
 
 def PBS(env,vmax,bloating_r,\
         d,K,t0,\
-        max_iter = 200,metric = 'flowtime',search_type = 'depth_first'\
+        max_iter = 200,metric = 'flowtime',search_type = 'depth_first',\
+        low_level = 'Tube_Planning'
         ):
     '''
         The MAMP algorithm using PBS as the high-level search and tube-based SAMP as the low-level search.
@@ -79,12 +81,15 @@ def PBS(env,vmax,bloating_r,\
         new_PT_nodes = PriorityQueue()
 
         # Compute new PT nodes
-        for (j,i) in [(a1,a2),(a2,a1)]:
+        for (j,i) in set([(a1,a2),(a2,a1)]):
             new_plan = deepcopy(solution)
             new_order = [(j,i)] 
-            if (i,j) in prev_ordering or len(list(nx.simple_cycles(nx.DiGraph(prev_ordering+new_order))))>0: 
+            if (i,j) in prev_ordering \
+                or (j,i) in prev_ordering\
+                or len(list(nx.simple_cycles(nx.DiGraph(prev_ordering+new_order))))>0: 
                     print('Skipping ij',(j,i),'prev_ordering',prev_ordering)
                     continue # Do not add (j,i) to the partial ordering if it introduces a cycle.
+            
             curr_ordering = prev_ordering+new_order
 
             sorted_agents  = list(nx.topological_sort(nx.DiGraph(curr_ordering))) # Get all the agents with lower orderings than i.
@@ -99,12 +104,32 @@ def PBS(env,vmax,bloating_r,\
                 
                 # Update the plan for agent_to_update
                 start, goal = env.starts[agent_to_update],env.goals[agent_to_update]
-                obs_trajectories = [new_plan[av] for av in agents_to_avoid]
+                
+                result = []
 
-                result = Tube_Planning(env,start,goal,vmax,bloating_r,\
-                                     obs_trajectories,\
-                                    d,K,t0)
+                if low_level == "SA_MILP_Planning":
+                    temp_obstacles = []
+                    for av in agents_to_avoid:
+                        t,xs = new_plan[av]
+                        # print('t',t,'xs',xs)
+                        for k in range(xs.shape[-1]-1):
+                            temp_obstacles.append(([t[k],t[k+1]],\
+                                                   line_seg_to_obstacle(xs[:,k],xs[:,k+1],bloating_r)))
+                    result = SA_MILP_Planning(env,start,goal,vmax,bloating_r,\
+                                temp_obstacles,\
+                                d,K,t0)
+                else:
+                    if low_level != "Tube_Planning":
+                        print("Low level {} not supported yet. Using Tube_Planning instead.".format(low_level))
 
+                    obs_trajectories = [new_plan[av] for av in agents_to_avoid]
+
+                    result = Tube_Planning(env,start,goal,vmax,bloating_r,\
+                                         obs_trajectories,\
+                                        d,K,t0)
+
+
+                # print("result",result)
                 if result is not None:
                     new_plan[agent_to_update] = unique_tx(*result)
                     agents_to_avoid.append(agent_to_update)
