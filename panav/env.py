@@ -21,6 +21,11 @@ class NavigationEnv:
         # starts and goals are shapely Polygon objects.
         self.starts = starts
         self.goals = goals
+
+        # Properties related to the hybrid graph representation
+        self.tunnels = []
+        self.open_spaces = []
+        self.hybrid_graph = []
         
 class Region:
     '''

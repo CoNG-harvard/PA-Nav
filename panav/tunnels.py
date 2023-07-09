@@ -19,8 +19,10 @@ class Tunnel:
             n2: the normal vector of face2 pointing inside the tunnel.
         '''
         self.faces = [face1,face2]
-        self.end_points = [np.mean(face,axis=0) for face in self.faces] # The end points of an hard edge.
         self.perps = [n1,n2]
+
+        self.end_points = [np.mean(face,axis=0)- p*0.1 for face,p in zip(self.faces,self.perps)] # The end points of an hard edge. Set it to be slightly outside of the tunnel.
+        
         verts = np.array(face1+face2)
         self.region = Polygon(verts[ConvexHull(verts).vertices,:])
 
@@ -110,10 +112,11 @@ def get_entry_exit(tun,x):
 
     for i in range(x.shape[-1]-1):
         seg = LineString((x[:,i],x[:,i+1]))
+       
         for fid, fl in enumerate(face_lines):
             if seg.intersects(fl):
                 ent_sgn = np.sign(tun.perps[fid].dot(x[:,i+1]-x[:,i]))
-                # print(fid,ent_sgn)
+                
                 if ent_sgn == 1:
                     entry = (fid,i,x[:,i])
                 elif ent_sgn == -1:
