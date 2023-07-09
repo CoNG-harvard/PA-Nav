@@ -14,10 +14,12 @@ class Tunnel:
             face1: [point1,point2], a list of two vectors. One face of the tunnel.
             face2: same format as face 1.
 
+
             n1: the normal vector of face1 pointing inside the tunnel.
             n2: the normal vector of face2 pointing inside the tunnel.
         '''
         self.faces = [face1,face2]
+        self.end_points = [np.mean(face,axis=0) for face in self.faces] # The end points of an hard edge.
         self.perps = [n1,n2]
         verts = np.array(face1+face2)
         self.region = Polygon(verts[ConvexHull(verts).vertices,:])
