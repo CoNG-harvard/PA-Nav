@@ -1,4 +1,5 @@
 import numpy as np
+from panav.env import box_2d_center
 
 from shapely import Polygon,LineString
 from shapely.ops import nearest_points
@@ -21,8 +22,10 @@ class Tunnel:
         self.faces = [face1,face2]
         self.perps = [n1,n2]
 
-        self.end_points = [np.mean(face,axis=0)- p*0.1 for face,p in zip(self.faces,self.perps)] # The end points of an hard edge. Set it to be slightly outside of the tunnel.
+        self.end_points = [np.mean(face,axis=0)- p*1.0 for face,p in zip(self.faces,self.perps)] # The end points of an hard edge. Set it to be slightly outside of the tunnel.
         
+        self.end_regions = [box_2d_center(ep, side = 0.1) for ep in self.end_points] # The waiting region around end points. Used in path planning.
+
         verts = np.array(face1+face2)
         self.region = Polygon(verts[ConvexHull(verts).vertices,:])
 

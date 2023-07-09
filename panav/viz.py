@@ -36,11 +36,11 @@ def draw_env(env,paths=[],ax = None):
    
     # Plot start and goal zones.
     for agent_ID,s in enumerate(env.starts):
-        x,y = draw_start(s,ax, label = 'Starts' if agent_ID==0 else '')
+        x,y = draw_start(s,ax, label = 'Start' if agent_ID==0 else '')
         ax.text(x,y,str(agent_ID),ha='center',va='center')
     
     for agent_ID,g in enumerate(env.goals):
-        x,y = draw_goal(g,ax, label = 'Goals' if agent_ID == 0 else '')
+        x,y = draw_goal(g,ax, label = 'Goal' if agent_ID == 0 else '')
         ax.text(x,y,str(agent_ID),ha='center',va='center')
 
     agents = range(len(paths))

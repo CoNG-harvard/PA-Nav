@@ -5,6 +5,7 @@ import polytope as pc
 import shapely
 from shapely import affinity, Polygon
 import cvxpy as cp
+import networkx 
 
 from panav.util import unit_cube
 from polytope import qhull
@@ -18,15 +19,12 @@ class NavigationEnv:
         # obstacles are Region class objects.
         self.obstacles = obstacles
         
-        # starts and goals are shapely Polygon objects.
+        # starts and goals are Region class objects.
         self.starts = starts
         self.goals = goals
 
-        # Properties related to the hybrid graph representation
-        self.tunnels = []
-        self.open_spaces = []
-        self.hybrid_graph = []
         
+
 class Region:
     '''
         Regions are always convex polytopes. Visualization code based on the S2M2 repo.
@@ -34,13 +32,16 @@ class Region:
     def __init__(self,A,b):
         self.A = A
         self.b = b
-        
+    
     def vertices(self):
         '''
             Compute the vertices of a general polytope.
         '''
         verts = np.array(ppm.duality.compute_polytope_vertices(self.A, self.b))
-        return Polygon(verts[ConvexHull(vert).vertices,:])
+        return Polygon(verts[ConvexHull(verts).vertices,:])
+    
+    def centroid(self):
+        return self.vertices().centroid
 
     def project(self, x):
         '''
