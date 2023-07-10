@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 from shapely.geometry.polygon import Polygon
-
+from shapely.plotting import plot_polygon
 
 def draw_env(env,paths=[],ax = None):
     '''
@@ -79,6 +79,34 @@ def draw_goal(o,ax,label = ''):
     return np.mean(x[1:]),np.mean(y[1:])
 
 
+def draw_hybrid(HG,ax=None):
+    '''
+        HG: a HybridGraph object.
+    '''
+    if ax is None:
+        ax =  plt.gca()
+    labeled = False
+    for tunnel in HG.tunnels:
+        plot_polygon(tunnel.region,ax=ax,label='Tunnel' if not labeled else None,add_points =False)
+        labeled=True
+
+    draw_env(HG.env,ax=ax)
+
+    soft_labeled = False
+    hard_labeled = False
+    for e in HG.edges:  
+        if HG.edges[e]['type'] == 'soft':  
+            path = HG.edges[e]['continuous_path']
+            ax.plot(path[0,:],path[1,:],alpha = 0.5,color = 'g',ls = 'dotted',label = "Soft edge" if not soft_labeled else None)
+            soft_labeled = True
+        else:
+            u,v = e
+            endpoint_locs = np.asarray([HG.nodes[u]['region'].centroid().coords[0],HG.nodes[v]['region'].centroid().coords[0]])
+            ax.plot(endpoint_locs[:,0],endpoint_locs[:,1],lw = 2,color = 'black', label = "Hard edge" if not hard_labeled else None)
+            hard_labeled = True
+
+    
+    ax.legend()
 
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
