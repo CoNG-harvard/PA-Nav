@@ -139,7 +139,7 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     tube_obs = []
     for times,xs in obs_trajectories:
         tube_obs+=trajectory_to_tube_obstacles(times,xs,bloating_r)
-
+     
     for Ap,bp in tube_obs:
         Hp = Ap @ tx - (bp + np.linalg.norm(Ap,axis=1)*bloating_r).reshape(-1,1)
         
@@ -163,6 +163,7 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
 
     prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
 
+    
     prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
     if t.value is not None:
         return t.value[0,:],x.value

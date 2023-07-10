@@ -118,7 +118,6 @@ def wp_to_tube_obstacle(t1,t2,p1,p2,bloating_r):
     tube_vertices = [np.hstack([t,p+1.0*bloating_r*unit_vec]) 
                      for t,p in zip([t1,t2],[p1,p2]) 
                      for unit_vec in unit_cube(d)]
-    
     poly = qhull(np.vstack(tube_vertices))
 
     Ap,bp = poly.A,poly.b

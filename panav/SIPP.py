@@ -72,6 +72,8 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
             if get_node_type(G,u)=='hard':
                 G.nodes[u]['unsafe_intervals'].append([t1,t2])
         else:
+
+            
             L = np.linalg.norm(node_locs[u]-node_locs[v])
             vel = L/(t2-t1)
             # self_traverse_t = 2*np.sqrt(2)*bloating_r/vel
@@ -192,10 +194,10 @@ def SIPP_core(G,start,goal,hScore):
             start_t = t + l
             end_t = UB + l
             for m,(lb,ub) in enumerate(G.nodes[u]['safe_intervals']):
-                int1 = intersection((lb,ub),(start_t,end_t))
+                int1 = interval_intersection((lb,ub),(start_t,end_t))
                 if int1:
                     for lbp,ubp in G.edges[s,u]['safe_intervals']:
-                        int2 = intersection((lbp,ubp),np.array(int1)-l)
+                        int2 = interval_intersection((lbp,ubp),np.array(int1)-l)
                         if int2:
                             a,b = int2
                             if (u,m) not in gScore.keys():
@@ -258,7 +260,7 @@ def unsafe_to_safe(unsafe_intervals,t0=0):
     return safe_intervals
 
 
-def intersection(interval1,interval2):
+def interval_intersection(interval1,interval2):
     lb,ub = max([interval1[0],interval2[0]]),min([interval1[1],interval2[1]])
     if lb>=ub:
         return None
@@ -268,14 +270,18 @@ def intersection(interval1,interval2):
 def get_edge_type(G,u,v):
     edge_type = 'hard'
     
-    if 'edge_type' in G.edges[u,v].keys():
-        edge_type = G.edges[u,v]['edge_type']
+    types = list(set(["edge_type","type"]).intersection(set(G.edges[u,v].keys())))
+    if len(types)>0:
+        edge_type = G.edges[u,v][types[0]]
+    
     return edge_type
 
 def get_node_type(G,u):
     node_type = 'soft'
-    
-    if 'node_type' in G.nodes[u].keys():
-        node_type = G.nodes[u]['node_type']
+  
+    types = list(set(["node_type","type"]).intersection(set(G.nodes[u].keys())))
+    if len(types)>0:
+         node_type = G.nodes[u][types[0]]
+
     return node_type
                                       
