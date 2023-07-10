@@ -5,7 +5,6 @@ import polytope as pc
 import shapely
 from shapely import affinity, Polygon
 import cvxpy as cp
-import networkx 
 
 from panav.util import unit_cube
 from polytope import qhull
@@ -21,8 +20,7 @@ class NavigationEnv:
         
         # starts and goals are Region class objects.
         self.starts = starts
-        self.goals = goals
-
+        self.goals = goals       
         
 
 class Region:
