@@ -54,16 +54,18 @@ class HybridGraph(nx.DiGraph):
             u = 2*i
             v = 2*i+1
 
-            travel_time = np.linalg.norm(tunnel.end_points[0]-tunnel.end_points[1])/self.vmax # Temporary. Could be more complicated.
+            min_travel_time = np.linalg.norm(tunnel.end_points[0]-tunnel.end_points[1])/self.vmax 
+            # Won't be modified
 
             self.add_node(u,type='tunnel',region = tunnel.end_regions[0])
             self.add_node(v,type='tunnel',region = tunnel.end_regions[1])
 
-            self.add_edge(u,v,type='hard', weight = travel_time,
-                          continuous_time = np.array([0, travel_time]), continuous_path = np.array(tunnel.end_points).T)
-            self.add_edge(v,u,type='hard', weight = travel_time, 
-                          continuous_time = np.array([0, travel_time]), continuous_path = np.array(tunnel.end_points[::-1]).T)
-            
+            self.add_edge(u,v,type='hard', weight = min_travel_time,
+                          continuous_time = np.array([0, min_travel_time]), continuous_path = np.array(tunnel.end_points).T)
+            self.add_edge(v,u,type='hard', weight = min_travel_time, 
+                          continuous_time = np.array([0, min_travel_time]), continuous_path = np.array(tunnel.end_points[::-1]).T)
+                         # continuous_time is at least min_travel_time on hard edges.
+
             self.tunnel_nodes.extend([u,v])
 
         starts,goals = self.env.starts, self.env.goals

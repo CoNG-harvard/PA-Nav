@@ -93,7 +93,7 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
             constraints.append(H[:,:-1] + M * (1-alpha)>=0)
 
             tfin_active = cp.Variable(K,boolean=True)
-            constraints.append(tfin-t[0,1:]+ M * (1-tfin_active)>=0)
+            constraints.append(tfin-t[1:]+ M * (1-tfin_active)>=0)
 
             # Constrain disjunction
             constraints.append(cp.sum(alpha,axis = 0)+tfin_active>=1)    
@@ -106,10 +106,9 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
         T_end_alpha = cp.Variable(len(T_end_constraints),boolean = True)
         for i,(lb,ub) in enumerate(T_end_constraints): 
             # print(i,lb,ub)   
-            constraints.append(t[0,-1] + TM * (1-T_end_alpha[i])>=lb)
+            constraints.append(t[-1] + TM * (1-T_end_alpha[i])>=lb)
             if np.isfinite(ub):
-
-                constraints.append(t[0,-1] - TM * (1-T_end_alpha[i])<=ub)
+                constraints.append(t[-1] - TM * (1-T_end_alpha[i])<=ub)
             
         constraints.append(cp.sum(T_end_alpha)>=1)
 
@@ -134,7 +133,9 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
 
 def Tube_Planning(env, start, goal, vmax, bloating_r,
                     obs_trajectories=[],\
-                     d=2,K=10,t0=0, T_end_constraints = None,ignore_finished_agents=False):
+                     d=2,K=10,t0=0, T_end_constraints = None,
+                     ignore_finished_agents=False
+                     ):
     '''
         Use tube obstacles to model other moving agents instead of temporary obstacles,
 
@@ -181,13 +182,17 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     
     tube_obs = []
     for times,xs in obs_trajectories:
+        # start_idx = np.max([0,np.sum(times<t0)-1])
+        # times = times[start_idx:]
+        # xs = xs[:,start_idx:]
+        # print(times,xs)
         tube_obs+=trajectory_to_tube_obstacles(times,xs,bloating_r)
      
     for Ap,bp in tube_obs:
         Hp = Ap @ tx - (bp + np.linalg.norm(Ap,axis=1)*bloating_r).reshape(-1,1)
         
-        alpha = cp.Variable((Hp.shape[0],K),boolean=True)
-
+        alpha = cp.Variable((Hp.shape[0],Hp.shape[1]-1),boolean = True)
+       
         constraints.append(Hp[:,1:] + M * (1-alpha)>=0)
         constraints.append(Hp[:,:-1] + M * (1-alpha)>=0)
 
@@ -220,7 +225,7 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     if T_end_constraints is not None:
         ls = np.array(T_end_constraints).flatten()
         ls = ls[np.isfinite(ls)]
-        TM = 10 * np.max(ls)
+        TM = 100 * np.max(ls)
 
         T_end_alpha = cp.Variable(len(T_end_constraints),boolean = True)
         for i,(lb,ub) in enumerate(T_end_constraints): 

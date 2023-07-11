@@ -29,7 +29,7 @@ def HybridSIPP(HG_in,start,goal, obs_graph_paths, obs_continuous_paths):
     HG = deepcopy(HG_in)
     node_locs = HG.node_locs()
     
-    obs_graph_trans = itertools.chain.from_iterable([plan_to_transitions(g) for g in obs_graph_paths])
+    obs_graph_trans = list(itertools.chain.from_iterable([plan_to_transitions(g) for g in obs_graph_paths]))
     compute_safe_intervals(HG,node_locs,obs_graph_trans,HG.vmax,HG.agent_radius,
                            merge_node_edge_intervals=True) # We must set the merge flag to be True here.
     
@@ -66,10 +66,11 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
         return path, unique_tx(*graph_plan_to_continuous(path,HG))
 
     path = []
-    # Reset the edge weights because they will be re-calculated.
+
     for e in HG.edges:
         if HG.edges[e]['type'] == 'soft':
-            HG.edges[e]['weight'] = None
+            HG.edges[e]['continuous_time'] = None
+            HG.edges[e]['continuous_path'] = None
 
     while not OPEN.empty():
         curr_fscore,s = OPEN.get() # Remove the s with the smallest gScore.
@@ -80,50 +81,81 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
             if goal not in hScore[u].keys(): # goal not reachable from u
                 continue
             # print("Safe interval of node",s, "at arriving time", t,"out to",u)
+            safe_intervals = HG.nodes[u]['safe_intervals']
+            curr_t = gScore[s]
             if HG.edges[s,u]['type'] == 'soft':
-                if HG.edges[s,u]['weight'] is None:
+                if HG.edges[s,u]['continuous_time'] is None:
                     # for all possible safe intervals at s do
                     # Compute the weight for the travel plan
-                    safe_intervals = HG.nodes[u]['safe_intervals']
                     
-                    possible_K = [3,5,7]
+                    possible_K = [2,3,5,7,10,15,20]
 
                     for K in possible_K:
+                        # print("K",K,"safe intervals",safe_intervals)
+                        # print("start",s,HG.node_loc(s),"end",u,HG.node_loc(u))
+                        # print('solving for edge', s,u,'curr_t',curr_t)
                         plan_result = Tube_Planning(HG.env, 
                                             HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
                                             obs_continuous_paths,HG.d,
-                                            K,
+                                            K,t0 = curr_t,
                                             T_end_constraints=safe_intervals)
-                        # plan_result = SA_MILP_Planning(HG.env, 
-                        #                     HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
-                        #                     obs_continuous_paths,HG.d,
-                        #                     K,
-                        #                     T_end_constraints=safe_intervals)
                         
                         if plan_result is not None:
                             break
 
                     # print('plan_result',plan_result)
                     if plan_result is None: # Infeasible. Could be that K value is low.
-                        print("Continuous path in open space not found. Consider increasing K value.")
+                        # print(s,u,"Continuous path in open space not found. Consider increasing K value.")
                         HG.edges[s,u]['weight'] = np.inf
+                        HG.edges[s,u]['continuous_time'] = np.array([0,np.inf])
                     else:
                         tp,xp = plan_result
-                        HG.edges[s,u]['weight'] = np.max(tp)
+                        HG.edges[s,u]['weight'] = np.max(tp)-np.min(tp)
                         HG.edges[s,u]['continuous_path'] = xp
-                        HG.edges[s,u]['continuous_time'] = tp
+                        HG.edges[s,u]['continuous_time'] = tp-np.min(tp)
                 
             elif HG.edges[s,u]['type']=='hard':
-                # Just go. Safety has been taken care of.
-                pass
-            
+                # curr_t = gScore[s]
+
+                # # Slow down continuous time if necessary
+
+                # # print('safe intervals',safe_intervals)
+                # # print('curr_t',curr_t,"earliest arrival", curr_t + HG.edges[s,u]['weight'])
+                
+                # for lb, ub in safe_intervals:
+                #     if curr_t + HG.edges[s,u]['weight']<=ub:
+                #         eta = np.max([lb-curr_t, HG.edges[s,u]['weight']])
+                #         HG.edges[s,u]['continuous_time'] = np.array([0,eta])
+                #         # print('Continuous time',(0,eta))
+                #         break
+                # if HG.edges[s,u]['continuous_time'] is None:
+                    # print('solving for hard edge', s,u)
+                        
+                    # plan_result = Tube_Planning(HG.env, 
+                    #                             HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
+                    #                             obs_continuous_paths,HG.d,
+                    #                             3,t0 = curr_t,
+                    #                             T_end_constraints=safe_intervals)
+                        
+                    # if plan_result is None: # Infeasible. Could be that K value is low.
+                    #     print(s,u,"Continuous path in open space not found. Consider increasing K value.")
+                    #     HG.edges[s,u]['weight'] = np.inf
+                    #     HG.edges[s,u]['continuous_time'] = np.array([0,np.inf])
+                    # else:
+                    #     tp,xp = plan_result
+                    #     HG.edges[s,u]['weight'] = np.max(tp)-np.min(tp)
+                    #     HG.edges[s,u]['continuous_path'] = xp
+                    #     HG.edges[s,u]['continuous_time'] = tp-np.min(tp)
+                    pass
+                
             # The rest is standard A*
             if u not in gScore.keys():
                 gScore[u] = np.inf
 
-            if gScore[s] + HG.edges[s,u]['weight'] < gScore[u]: # The A* update
+            travel_time = np.max(HG.edges[s,u]['continuous_time'])
+            if gScore[s] + travel_time < gScore[u]: # The A* update
                 cameFrom[u] = s
-                gScore[u] = gScore[s] + HG.edges[s,u]['weight']
+                gScore[u] = gScore[s] + travel_time
                 fScore = gScore[u]+hScore[u][goal]
                 OPEN.put((fScore,u))
     return None

@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry.polygon import Polygon
 from shapely.plotting import plot_polygon
 
-def draw_env(env,paths=[],ax = None):
+def draw_env(env,paths=[],ax = None,show_agent_ID = False):
     '''
         env: the path planning environment.
 
@@ -37,11 +37,13 @@ def draw_env(env,paths=[],ax = None):
     # Plot start and goal zones.
     for agent_ID,s in enumerate(env.starts):
         x,y = draw_start(s,ax, label = 'Start' if agent_ID==0 else '')
-        ax.text(x,y,str(agent_ID),ha='center',va='center')
+        if show_agent_ID:
+            ax.text(x,y,str(agent_ID),ha='center',va='center')
     
     for agent_ID,g in enumerate(env.goals):
         x,y = draw_goal(g,ax, label = 'Goal' if agent_ID == 0 else '')
-        ax.text(x,y,str(agent_ID),ha='center',va='center')
+        if show_agent_ID:
+            ax.text(x,y,str(agent_ID),ha='center',va='center')
 
     agents = range(len(paths))
 
@@ -105,7 +107,8 @@ def draw_hybrid(HG,ax=None):
             ax.plot(endpoint_locs[:,0],endpoint_locs[:,1],lw = 2,color = 'black', label = "Hard edge" if not hard_labeled else None)
             hard_labeled = True
 
-    
+    for u in HG.nodes:
+        ax.text(*HG.node_loc(u),str(u))
     ax.legend()
 
 from matplotlib.animation import FuncAnimation
