@@ -1,24 +1,26 @@
+import itertools
 import networkx as nx
 import numpy as np
 from queue import PriorityQueue
 from panav.SIPP import compute_safe_intervals, compute_edge_weights, interval_intersection, plan_to_transitions
 from panav.util import unique_tx
-from panav.SAMP import Tube_Planning
+from panav.SAMP import Tube_Planning, SA_MILP_Planning
 from copy import deepcopy
 
 
-def HybridSIPP(HG_in,start,goal, obs_graph_trans, obs_continuous_path):
+def HybridSIPP(HG_in,start,goal, obs_graph_paths, obs_continuous_paths):
     '''
         HG_in: a networkx graph.
 
         node_locs: a dict in the form {s:loc of s for s in HG}
 
         start, goal: start and goal node(nodes in HG).
-
-        obs_graph_trans: the transitions of the dynamic obstacle(s), in {(s_i,u_i,t1_i,t2_i):i=0,1,...} form.
-            - If s_i!=u_i, then (s_i,u_i) should be an edge in HG.
-            - t1_i<t2_i are positive real numbers representing the time interval during which the dynamic obstacle traverses(or stops at) (s_i,u_i).            
-
+       
+        obs_graph_paths: a list of (node, time)-lists [
+                                            [(node[i][0],t[i][0]),(node[i][1],t[i][1]),...,(node[i][k_i],t[i][k_i])]
+                                             for i = 1,2,...,nAgents   
+                                            ]
+       
         obs_continuous_path: a list of tuples [(times,xs)] representing the continuous time-space paths of moving obstacles.
 
 
@@ -26,16 +28,17 @@ def HybridSIPP(HG_in,start,goal, obs_graph_trans, obs_continuous_path):
     '''
     HG = deepcopy(HG_in)
     node_locs = HG.node_locs()
-
+    
+    obs_graph_trans = itertools.chain.from_iterable([plan_to_transitions(g) for g in obs_graph_paths])
     compute_safe_intervals(HG,node_locs,obs_graph_trans,HG.vmax,HG.agent_radius,
                            merge_node_edge_intervals=True) # We must set the merge flag to be True here.
     
     hScore = dict(nx.shortest_path_length(deepcopy(HG_in),weight = 'weight'))
     
-    return Hybrid_SIPP_core(HG,start,goal,obs_continuous_path,hScore)
+    return Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore)
 
 
-def Hybrid_SIPP_core(HG,start,goal,obs_continuous_path,hScore):
+def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
     
     OPEN = PriorityQueue()
 
@@ -83,9 +86,23 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_path,hScore):
                     # Compute the weight for the travel plan
                     safe_intervals = HG.nodes[u]['safe_intervals']
                     
-                    plan_result = Tube_Planning(HG.env, 
-                                        HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
-                                        obs_continuous_path,HG.d,HG.K,T_end_constraints=safe_intervals)
+                    possible_K = [3,5,7]
+
+                    for K in possible_K:
+                        plan_result = Tube_Planning(HG.env, 
+                                            HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
+                                            obs_continuous_paths,HG.d,
+                                            K,
+                                            T_end_constraints=safe_intervals)
+                        # plan_result = SA_MILP_Planning(HG.env, 
+                        #                     HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
+                        #                     obs_continuous_paths,HG.d,
+                        #                     K,
+                        #                     T_end_constraints=safe_intervals)
+                        
+                        if plan_result is not None:
+                            break
+
                     # print('plan_result',plan_result)
                     if plan_result is None: # Infeasible. Could be that K value is low.
                         print("Continuous path in open space not found. Consider increasing K value.")

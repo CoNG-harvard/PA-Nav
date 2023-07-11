@@ -83,6 +83,13 @@ def box_2d_center(center,side):
     ub = center+side/2
     return Box2DRegion((lb[0],ub[0]),(lb[1],ub[1]))
 
+def trajectory_to_temp_obstacles(t,xs,bloating_r):
+    # Convert the agent's path into temporary obstacle.
+    temp_obstacles = []
+    for k in range(xs.shape[-1]-1):
+        temp_obstacles.append(([t[k],t[k+1]], 
+                               line_seg_to_obstacle(xs[:,k],xs[:,k+1],bloating_r)))
+    return temp_obstacles
 
 def line_seg_to_obstacle(x1,x2,bloating_r):
     '''

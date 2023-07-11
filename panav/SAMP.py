@@ -1,10 +1,10 @@
 import cvxpy as cp
 import numpy as np
-from panav.env import trajectory_to_tube_obstacles
+from panav.env import trajectory_to_tube_obstacles, box_2d_center, trajectory_to_temp_obstacles
 
 def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
-                    temp_obstacles=[],\
-                     d=2,K=10,t0=0):
+                    obs_trajectories = [],\
+                     d=2,K=10,t0=0,T_end_constraints = None,ignore_finished_agents=False,temp_obstacles=[]):
     '''
         Single-agent path planning via mixed-integer programming.
 
@@ -48,6 +48,11 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
     constraints.append(goal.A @ x[:,-1] <= goal.b)
 
 
+    # Create temp_obstalces if needed
+    if len(temp_obstacles)==0 and len(obs_trajectories)>0:
+        for obs_t,obs_xs in obs_trajectories:
+            temp_obstacles.extend(trajectory_to_temp_obstacles(obs_t,obs_xs,bloating_r))
+
     # Static obstacle constraints
     obs = [([],O) for O in env.obstacles] + temp_obstacles
     lb_active = []
@@ -74,7 +79,39 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
             constraints.append(lb-t[1:]+ M * (1-lb_active[-1])>=0)
 
             constraints.append(cp.sum(alpha,axis = 0)+lb_active[-1]+ub_active[-1]>=1)
+
+    if not ignore_finished_agents:
+        for obs_times,obs_xs in obs_trajectories:
+            tfin = obs_times[-1]
+            xfin = obs_xs[:,-1]
+            O = box_2d_center(xfin,2*bloating_r) # The agent that has reached its goal, a static obstacle.
+            A, b= O.A,O.b
             
+            H = A @ x-(b+ np.linalg.norm(A,axis=1) * bloating_r).reshape(-1,1) # Bloating radius
+            alpha = cp.Variable((H.shape[0],K),boolean=True)
+            constraints.append(H[:,1:] + M * (1-alpha)>=0)
+            constraints.append(H[:,:-1] + M * (1-alpha)>=0)
+
+            tfin_active = cp.Variable(K,boolean=True)
+            constraints.append(tfin-t[0,1:]+ M * (1-tfin_active)>=0)
+
+            # Constrain disjunction
+            constraints.append(cp.sum(alpha,axis = 0)+tfin_active>=1)    
+    # T_end_constraint
+    if T_end_constraints is not None:
+        ls = np.array(T_end_constraints).flatten()
+        ls = ls[np.isfinite(ls)]
+        TM = 10 * np.max(ls)
+
+        T_end_alpha = cp.Variable(len(T_end_constraints),boolean = True)
+        for i,(lb,ub) in enumerate(T_end_constraints): 
+            # print(i,lb,ub)   
+            constraints.append(t[0,-1] + TM * (1-T_end_alpha[i])>=lb)
+            if np.isfinite(ub):
+
+                constraints.append(t[0,-1] - TM * (1-T_end_alpha[i])<=ub)
+            
+        constraints.append(cp.sum(T_end_alpha)>=1)
 
     # Time positivity constraint
     constraints.append(t[0]==t0)
@@ -97,7 +134,7 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
 
 def Tube_Planning(env, start, goal, vmax, bloating_r,
                     obs_trajectories=[],\
-                     d=2,K=10,t0=0, T_end_constraints = None):
+                     d=2,K=10,t0=0, T_end_constraints = None,ignore_finished_agents=False):
     '''
         Use tube obstacles to model other moving agents instead of temporary obstacles,
 
@@ -106,9 +143,11 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
         T_end_constraints: a list of interval constraint on t[-1]. Typically appear in HybridGraph environment. 
                         - [Data format] T_end_constraint = [(lb_i,ub_i) for i=1,2,3,...,m], lb_i<ub_i are doubles.
                         - The constraint is disjunctive, meaning if lb_i<= t[-1] <=ub_i for some i=1,2,..., then the constraint is satisfied.
+
+        ignore_finished_agents: whether ignore agents that have reached there goals or not.
     '''
 
-    M = 5* np.max(np.abs(env.limits))
+    M = 5 * np.max(np.abs(env.limits))
         
     x = cp.Variable((d, K+1))
     t = cp.Variable((1,K+1))
@@ -153,6 +192,25 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
         constraints.append(Hp[:,:-1] + M * (1-alpha)>=0)
 
         constraints.append(cp.sum(alpha,axis = 0)>=1)
+
+    if not ignore_finished_agents:
+        for obs_times,obs_xs in obs_trajectories:
+            tfin = obs_times[-1]
+            xfin = obs_xs[:,-1]
+            O = box_2d_center(xfin,2*bloating_r) # The agent that has reached its goal, a static obstacle.
+            A, b= O.A,O.b
+            
+            H = A @ x-(b+ np.linalg.norm(A,axis=1) * bloating_r).reshape(-1,1) # Bloating radius
+            alpha = cp.Variable((H.shape[0],K),boolean=True)
+            constraints.append(H[:,1:] + M * (1-alpha)>=0)
+            constraints.append(H[:,:-1] + M * (1-alpha)>=0)
+
+            tfin_active = cp.Variable(K,boolean=True)
+            constraints.append(tfin-t[0,1:]+ M * (1-tfin_active)>=0)
+
+            # Constrain disjunction
+            constraints.append(cp.sum(alpha,axis = 0)+tfin_active>=1)
+                    
 
     # Time positivity constraint
     constraints.append(t[0,0]==t0)

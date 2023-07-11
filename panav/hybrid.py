@@ -10,7 +10,7 @@ import numpy as np
 
 class HybridGraph(nx.DiGraph):
     def __init__(self, env, agent_radius,d = 2,  # Path planning parameters are hard coded for now.
-                                        K = 5,
+                                        K = 3,
                                         vmax = 1.0) -> None:
         ''' 
             env: a panav.env.NavigationEnv object.
@@ -86,12 +86,12 @@ class HybridGraph(nx.DiGraph):
             if u!=v and not (u,v) in G_soft.edges:
                 u_type,v_type = self.nodes[u]['type'],self.nodes[v]['type']
                 if (u_type,v_type) not in legal_endpoint_types:
-                    print("Skipping edge",u,v,"because",(u_type,v_type),"is not a possible edge type. Legal ones are",legal_endpoint_types)
+                    # print("Skipping edge",u,v,"because",(u_type,v_type),"is not a possible edge type. Legal ones are",legal_endpoint_types)
                     continue                    
                 
                 if u_type =='start' and v_type=='goal' and self.nodes[u]['agent'] != self.nodes[v]['agent']:
                     # If it's a start to goal connection, consider soft edge establishment only when they are the start and goal for the same agent. 
-                    print('Skipping illegal start-goal connection for edge',u,v)
+                    # print('Skipping illegal start-goal connection for edge',u,v)
                     continue
                 else:
                     pass
