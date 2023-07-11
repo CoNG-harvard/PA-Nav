@@ -81,18 +81,20 @@ class HybridGraph(nx.DiGraph):
         
         # Add soft edges
         G_soft = nx.DiGraph() # Temporary graph to store soft edges and determine how nodes are grouped by open spaces.
+        legal_endpoint_types = [("tunnel","tunnel"),("start","tunnel"),("tunnel","goal"), ("start","goal")]
         for u,v in product(self.nodes,self.nodes):
-            if u<v and not (u,v) in G_soft.edges:
-
-                # Eliminate start to start, goal to goal connections. 
-                if self.nodes[u]['type'] in ['start','goal'] and self.nodes[v]['type'] in ['start','goal']:
-                    if self.nodes[u]['type'] != self.nodes[v]['type'] and self.nodes[u]['agent'] == self.nodes[v]['agent']:
-                        # If it's a start to goal connection, consider soft edge establishment only when they are the start and goal for the same agent. 
-                        # print('Checking start to goal connection for agent', self.nodes[u]['agent'])
-                        pass
-                    else:
-                        # print('Skipping irrelevant connection')
-                        continue
+            if u!=v and not (u,v) in G_soft.edges:
+                u_type,v_type = self.nodes[u]['type'],self.nodes[v]['type']
+                if (u_type,v_type) not in legal_endpoint_types:
+                    print("Skipping edge",u,v,"because",(u_type,v_type),"is not a possible edge type. Legal ones are",legal_endpoint_types)
+                    continue                    
+                
+                if u_type =='start' and v_type=='goal' and self.nodes[u]['agent'] != self.nodes[v]['agent']:
+                    # If it's a start to goal connection, consider soft edge establishment only when they are the start and goal for the same agent. 
+                    print('Skipping illegal start-goal connection for edge',u,v)
+                    continue
+                else:
+                    pass
 
                 ## Determine if the shortest path between u, v passes through any tunnels
              
@@ -117,8 +119,7 @@ class HybridGraph(nx.DiGraph):
 
                 if not through_some_tunnel: # u-v does not pass through any tunnel.
                     G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
-                    G_soft.add_edge(v,u,type='soft', continuous_path = x[:,::-1], continuous_time= t[-1]-t[::-1], weight = np.max(t))
-                   
+                    
         self.open_spaces = [c for c in nx.connected_components(nx.to_undirected(G_soft))]
         # Give all nodes in the graph an open space id
         for id, c in enumerate(self.open_spaces):

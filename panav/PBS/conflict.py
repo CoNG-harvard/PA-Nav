@@ -7,6 +7,7 @@ def MA_plan_conflict(plan,bloating_r):
         Output: 
         If there is conflict within the plan, output the  the first conflict.
         The conflict includes the involved agents and conflicted timed line segments.
+                            output = ([agent1, t1, seg1],[agent2, t2, seg2])
         
         If there is no conflict, return None.
     '''

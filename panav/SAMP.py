@@ -97,11 +97,15 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
 
 def Tube_Planning(env, start, goal, vmax, bloating_r,
                     obs_trajectories=[],\
-                     d=2,K=10,t0=0):
+                     d=2,K=10,t0=0, T_end_constraints = None):
     '''
         Use tube obstacles to model other moving agents instead of temporary obstacles,
 
         obs_trajectories: a list of tuples (times,xs), corresponding to the trajectory of another agent.
+
+        T_end_constraints: a list of interval constraint on t[-1]. Typically appear in HybridGraph environment. 
+                        - [Data format] T_end_constraint = [(lb_i,ub_i) for i=1,2,3,...,m], lb_i<ub_i are doubles.
+                        - The constraint is disjunctive, meaning if lb_i<= t[-1] <=ub_i for some i=1,2,..., then the constraint is satisfied.
     '''
 
     M = 5* np.max(np.abs(env.limits))
@@ -153,6 +157,22 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     # Time positivity constraint
     constraints.append(t[0,0]==t0)
     constraints.append(t[0,1:]>=t[0,:-1])
+
+    # T_end_constraint
+    if T_end_constraints is not None:
+        ls = np.array(T_end_constraints).flatten()
+        ls = ls[np.isfinite(ls)]
+        TM = 10 * np.max(ls)
+
+        T_end_alpha = cp.Variable(len(T_end_constraints),boolean = True)
+        for i,(lb,ub) in enumerate(T_end_constraints): 
+            # print(i,lb,ub)   
+            constraints.append(t[0,-1] + TM * (1-T_end_alpha[i])>=lb)
+            if np.isfinite(ub):
+
+                constraints.append(t[0,-1] - TM * (1-T_end_alpha[i])<=ub)
+            
+        constraints.append(cp.sum(T_end_alpha)>=1)
 
     # Velocity constraints
     vb = vmax*(t[0,1:]-t[0,:-1])

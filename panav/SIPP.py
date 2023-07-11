@@ -1,9 +1,9 @@
 import networkx as nx
 import numpy as np
 from queue import PriorityQueue
-
-
-def SIPP(G,node_locs,start,goal, obs_trans, v_max, bloating_r):
+from copy import deepcopy
+import itertools
+def SIPP(G_in,node_locs,start,goal, obs_trans, v_max, bloating_r):
     '''
         G: a networkx graph.
 
@@ -23,6 +23,7 @@ def SIPP(G,node_locs,start,goal, obs_trans, v_max, bloating_r):
 
        Output: a single-agent plan on G in the form of [(s_i,t_i) for i=0,1,2,3...]
     '''
+    G = deepcopy(G_in)
     if 'weight' not in list(G.edges(data=True))[0][-1].keys():
         compute_edge_weights(G,node_locs,v_max)
 
@@ -49,7 +50,7 @@ def plan_to_transitions(plan):
 
     return transitions
 
-def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
+def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r,merge_node_edge_intervals = False):
     '''
         Compute the safe intervals of the nodes and edges of G, as G's node- and edge-attributes in place.
     '''
@@ -78,7 +79,7 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
             vel = L/(t2-t1)
             # self_traverse_t = 2*np.sqrt(2)*bloating_r/vel
             # self_traverse_t = 3*bloating_r/vel
-            self_traverse_t = 2*bloating_r/vel
+            self_traverse_t = 4*bloating_r/vel
 
             '''
                 self_traverse_t is a parameter we can change to tune the conservativeness collision avoidance.
@@ -115,13 +116,18 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r):
 
         
 
-    for i in G:
-        G.nodes[i]['unsafe_intervals'] = merge_intervals(G.nodes[i]['unsafe_intervals'])
-        G.nodes[i]['safe_intervals'] = unsafe_to_safe( G.nodes[i]['unsafe_intervals'])
-
+    
     for e in G.edges:
         G.edges[e]['unsafe_intervals'] = merge_intervals(G.edges[e]['unsafe_intervals'])
         G.edges[e]['safe_intervals'] = unsafe_to_safe(G.edges[e]['unsafe_intervals'])
+
+    for i in G:
+        G.nodes[i]['unsafe_intervals'] = merge_intervals(G.nodes[i]['unsafe_intervals'])
+        
+        if merge_node_edge_intervals: # Merge the edge unsafe interval into the node unsafe intervals if this flag is set
+            G.nodes[i]['unsafe_intervals'] = merge_intervals(G.nodes[i]['unsafe_intervals']+\
+                                                             list(itertools.chain.from_iterable([G.edges[i,u]['unsafe_intervals'] for u in G[i]])))
+        G.nodes[i]['safe_intervals'] = unsafe_to_safe( G.nodes[i]['unsafe_intervals'])
 
 
 
@@ -190,6 +196,9 @@ def SIPP_core(G,start,goal,hScore):
         LB,UB = G.nodes[s]['safe_intervals'][safe_interval_index(t,s)]
 
         for u in G[s]:
+            if goal not in hScore[u].keys():
+                continue # goal is not reachable from u
+                                
             l = G.edges[s,u]['weight']
             start_t = t + l
             end_t = UB + l
@@ -207,6 +216,7 @@ def SIPP_core(G,start,goal,hScore):
                                 cameFrom[(u,m)] = (s,i)
                                 gScore[(u,m)] = a+l
                                 transition_duration[(u,m)] = (a,a+l)
+                                
                                 fScore = a+l+hScore[u][goal]
                                 OPEN.put((fScore,(u,m)))
 
