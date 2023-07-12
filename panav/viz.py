@@ -81,7 +81,7 @@ def draw_goal(o,ax,label = ''):
     return np.mean(x[1:]),np.mean(y[1:])
 
 
-def draw_hybrid(HG,ax=None):
+def draw_hybrid(HG,ax=None,paths = [],display_soft=True,display_node = True,show_agent_ID = False):
     '''
         HG: a HybridGraph object.
     '''
@@ -92,23 +92,26 @@ def draw_hybrid(HG,ax=None):
         plot_polygon(tunnel.region,ax=ax,label='Tunnel' if not labeled else None,add_points =False)
         labeled=True
 
-    draw_env(HG.env,ax=ax)
+    draw_env(HG.env,paths=paths,ax=ax,show_agent_ID=show_agent_ID)
 
     soft_labeled = False
     hard_labeled = False
     for e in HG.edges:  
-        if HG.edges[e]['type'] == 'soft':  
-            path = HG.edges[e]['continuous_path']
-            ax.plot(path[0,:],path[1,:],alpha = 0.5,color = 'g',ls = 'dotted',label = "Soft edge" if not soft_labeled else None)
-            soft_labeled = True
+        if HG.edges[e]['type'] == 'soft':
+            if display_soft:  
+                path = HG.edges[e]['continuous_path']
+                ax.plot(path[0,:],path[1,:],alpha = 0.5,color = 'g',ls = 'dotted',label = "Soft edge" if not soft_labeled else None)
+                soft_labeled = True
         else:
             u,v = e
             endpoint_locs = np.asarray([HG.nodes[u]['region'].centroid().coords[0],HG.nodes[v]['region'].centroid().coords[0]])
             ax.plot(endpoint_locs[:,0],endpoint_locs[:,1],lw = 2,color = 'black', label = "Hard edge" if not hard_labeled else None)
             hard_labeled = True
 
-    for u in HG.nodes:
-        ax.text(*HG.node_loc(u),str(u))
+    if display_node:
+        for u in HG.nodes:
+            ax.text(*HG.node_loc(u),str(u))
+
     ax.legend()
 
 from matplotlib.animation import FuncAnimation

@@ -247,7 +247,7 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
 
     
-    prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
+    prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
     if t.value is not None:
         return t.value[0,:],x.value
     else:

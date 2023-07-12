@@ -88,7 +88,7 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
                     # for all possible safe intervals at s do
                     # Compute the weight for the travel plan
                     
-                    possible_K = [2,3,5,7,10,15,20]
+                    possible_K = [2,3,5,6]
 
                     for K in possible_K:
                         # print("K",K,"safe intervals",safe_intervals)
@@ -98,7 +98,7 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
                                             HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
                                             obs_continuous_paths,HG.d,
                                             K,t0 = curr_t,
-                                            T_end_constraints=safe_intervals)
+                                            T_end_constraints=safe_intervals, ignore_finished_agents=True)
                         
                         if plan_result is not None:
                             break
