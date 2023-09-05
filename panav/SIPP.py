@@ -80,7 +80,8 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r,merge_node_edg
             # self_traverse_t = 2*np.sqrt(2)*bloating_r/vel
             # self_traverse_t = 3*bloating_r/vel
             self_traverse_t = 4*bloating_r/vel
-            # self_traverse_t = 6*bloating_r/vel
+            # self_traverse_t = 10*bloating_r/vel
+            # print(self_traverse_t,"self_traverse_t)"
 
             '''
                 self_traverse_t is a parameter we can change to tune the conservativeness collision avoidance.

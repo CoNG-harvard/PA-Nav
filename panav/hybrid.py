@@ -120,7 +120,8 @@ class HybridGraph(nx.DiGraph):
                         break
 
                 if not through_some_tunnel: # u-v does not pass through any tunnel.
-                    G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
+                    # G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
+                    G_soft.add_edge(u,v,type='soft', weight = np.max(t))
                     
         self.open_spaces = [c for c in nx.connected_components(nx.to_undirected(G_soft))]
         # Give all nodes in the graph an open space id
