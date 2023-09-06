@@ -1,5 +1,5 @@
 # PA-Nav
-The code for **<u>P</u>**arallel **<u>A</u>**synchronous Multi-agent **<u>Nav</u>**igation(PA-Nav) project.
+The code for **P**arallel **A**synchronous Multi-agent **Nav**igation(PA-Nav) project.
 
 The core functionalities are encapsulated in the *panav* Python package.
 
