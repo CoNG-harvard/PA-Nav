@@ -1,5 +1,5 @@
-# PA-Nav
-The code for **<u>P</u>**arallel **<u>A</u>**synchronous Multi-agent **<u>Nav</u>**igation(PA-Nav) project.
+# Introduction
+The code for the project Multi-agent Motion Planning on the Hybrid Graph.
 
 The core functionalities are encapsulated in the *panav* Python package.
 
