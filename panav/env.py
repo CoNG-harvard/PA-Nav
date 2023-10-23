@@ -21,6 +21,7 @@ class NavigationEnv:
         # starts and goals are Region class objects.
         self.starts = starts
         self.goals = goals       
+      
         
 
 class Region:
@@ -30,13 +31,14 @@ class Region:
     def __init__(self,A,b):
         self.A = A
         self.b = b
+        verts = np.array(ppm.duality.compute_polytope_vertices(self.A, self.b))
+        self.verts = Polygon(verts[ConvexHull(verts).vertices,:])
     
     def vertices(self):
         '''
-            Compute the vertices of a general polytope.
+            Return the vertices of a general polytope.
         '''
-        verts = np.array(ppm.duality.compute_polytope_vertices(self.A, self.b))
-        return Polygon(verts[ConvexHull(verts).vertices,:])
+        return self.verts
     
     def centroid(self):
         return self.vertices().centroid
@@ -56,11 +58,11 @@ class PolygonRegion(Region):
         self.verts = np.array(vertices) # verts.shape = (n,dim)
         self.verts = self.verts[ConvexHull(self.verts).vertices,:]
         self.poly = pc.qhull(self.verts)
+        self.verts = Polygon(self.verts)
+        
 
         self.A, self.b = self.poly.A, self.poly.b
 
-    def vertices(self):
-        return Polygon(self.verts)
         
 class Box2DRegion(Region):
     
@@ -70,11 +72,11 @@ class Box2DRegion(Region):
         self.poly = pc.box2poly([xlim,ylim])
         
         self.A, self.b = self.poly.A, self.poly.b
-        
-    def vertices(self):
-        return shapely.geometry.box(self.xlim[0],self.ylim[0],
+        self.verts = shapely.geometry.box(self.xlim[0],self.ylim[0],
                                     self.xlim[1],self.ylim[1])
 
+        
+     
 def box_2d_center(center,side):
     '''
         Create a 2D box with specified center coordinates and side lengths.
