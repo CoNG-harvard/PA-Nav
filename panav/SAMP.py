@@ -1,7 +1,9 @@
 import cvxpy as cp
 import numpy as np
 from panav.env import trajectory_to_tube_obstacles, box_2d_center, trajectory_to_temp_obstacles
-
+'''
+    Mixed-Integer Linear Programming based single agent motion planning algorithms, with dynamic obstacles.
+'''
 def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
                     obs_trajectories = [],\
                      d=2,K=10,t0=0,T_end_constraints = None,ignore_finished_agents=False,temp_obstacles=[]):
