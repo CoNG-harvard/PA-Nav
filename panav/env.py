@@ -84,7 +84,24 @@ def box_2d_center(center,side):
     lb = center-side/2
     ub = center+side/2
     return Box2DRegion((lb[0],ub[0]),(lb[1],ub[1]))
+def approxCircle(c,R,N=50):
+    # Approximate a circular obstacle with multiple boxes
+    N = 50
+    width = 2*R/N
+    out = []
+    for k in range(-N//2+1,N//2):
+        box_center = np.array([c[0] + width * k, c[1]])
+        sides = np.array([width, 2 * np.sqrt(R**2 - (width * (abs(k)+0.5))**2)])
+        out.append(box_2d_center(box_center,sides))
+    return out
 
+def gate(x_loc,y_loc, width, y_lims,thickness = 2.0):
+    # A gate is made of two walls touching the upper and lower limit of the environment
+    # with an opening of certain width between them. The y-coordinate of the opening is determined by y_loc. 
+    
+    O1 = Box2DRegion((-thickness/2+x_loc,thickness/2+x_loc),(y_loc+width/2,y_lims[1]))
+    O2 = Box2DRegion((-thickness/2+x_loc,thickness/2+x_loc),(y_lims[0],y_loc-width/2))
+    return [O1,O2]
 def trajectory_to_temp_obstacles(t,xs,bloating_r):
     # Convert the agent's path into temporary obstacle.
     temp_obstacles = []

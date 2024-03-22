@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry.polygon import Polygon
 from shapely.plotting import plot_polygon
 
-def draw_env(env,paths=[],ax = None,show_agent_ID = False):
+def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None):
     '''
         env: the path planning environment.
 
@@ -48,7 +48,7 @@ def draw_env(env,paths=[],ax = None,show_agent_ID = False):
     agents = range(len(paths))
 
     for a in agents:    
-        ax.plot(paths[a][0,:],paths[a][1,:],alpha = 0.5)
+        ax.plot(paths[a][0,:],paths[a][1,:],color = path_color,alpha = 0.5)
     
 
     # Switch off boundaries
@@ -57,8 +57,8 @@ def draw_env(env,paths=[],ax = None,show_agent_ID = False):
     # Use a square aspect ratio
     ax.set_aspect('equal', adjustable='box')
 
-    # if env.starts or env.goals:
-    #     ax.legend()
+    if env.starts or env.goals:
+        ax.legend()
 
 def draw_obstacle(o,ax):
     verts = o.vertices()
@@ -81,7 +81,7 @@ def draw_goal(o,ax,label = ''):
     return np.mean(x[1:]),np.mean(y[1:])
 
 
-def draw_hybrid(HG,ax=None,paths = [],display_soft=True,display_node = True,show_agent_ID = False):
+def draw_hybrid(HG,ax=None,paths = [],display_soft=False,display_node = True,show_agent_ID = False):
     '''
         HG: a HybridGraph object.
     '''

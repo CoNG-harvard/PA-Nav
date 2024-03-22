@@ -94,7 +94,7 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
             
                 if HG.edges[s,u]['type'] == 'soft':
                          # print('solving for edge', s,u,'curr_t',curr_t)
-                    possible_K = [2,3,5,6]
+                    possible_K = list(range(1,12))
                     for K in possible_K:     
                         # print("K",K,"safe intervals",safe_intervals)
                         # print("start",s,HG.node_loc(s),"end",u,HG.node_loc(u))
