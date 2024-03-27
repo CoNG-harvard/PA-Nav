@@ -261,3 +261,44 @@ def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajec
         constraints.append(- vb <= np.sqrt(2) * diff)
     
     return t,x, constraints
+
+from panav.util import ParametericCurve
+def track_ref_path(env, start, goal,ref_path, vmax, bloating_r, obstacle_trajectories,d, alpha = 0.5):
+    K0 = ref_path.shape[1]-1
+    ref_curve = ParametericCurve(ref_path)
+    for K in range(K0,K0+5):
+        print(K)
+        ref_points = np.array([ref_curve(t) for t in np.linspace(0,1,K+1)]).T
+
+        t,x,constraints = Standard_Tube_Var_Constraints(env, start, goal,vmax, bloating_r,obstacle_trajectories, d, K)
+
+        tracking_loss = cp.norm(x-ref_points,'fro')
+        prob = cp.Problem(cp.Minimize(alpha*tracking_loss+t[0,-1]),constraints)
+        prob.solve()
+        print(tracking_loss.value, t.value[0,-1])
+        if t.value is not None:
+            return t.value[0,:],x.value
+    return None
+
+from panav.conflict import plan_obs_conflict
+def lazy_optim(planner, env, start, goal, obstacle_trajectories):
+    active = []
+    m = len(obstacle_trajectories)
+
+    i = 0
+    while True:
+        print("num obstacle trajectories:{}/{}".format(i,m))
+        p = planner(env,start,goal,active)
+        if p is None:
+            print('Problem becomes infeasible.')
+            break
+        conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r)
+        if not conflicted_obs:
+            return p
+        active.append(conflicted_obs)
+        
+        i+=1
+        if i>m:
+            break
+
+    return None

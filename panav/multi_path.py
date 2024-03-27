@@ -55,7 +55,7 @@ def explore_multi_path(env, start, goal):
     for i in range(10):
         # print(i,'num path')
         path = None
-        for K in range(2,10):
+        for K in range(2,7):
             # print(K,'K')
             path, val = shortest_path(env, start, goal, K,d,paths)
             if path is not None:
