@@ -150,12 +150,66 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
         ignore_finished_agents: whether ignore agents that have reached there goals or not.
     '''
 
+
+    # Decision variables and standard constraints for the path planning problem.
+    t, x, constraints = Standard_Tube_Var_Constraints(env,start,goal,vmax,bloating_r,obs_trajectories, d, K, t0)
+
+    # Additional constraints
     M = 5 * np.max(np.abs(env.limits))
-        
+    if not ignore_finished_agents:
+        for obs_times,obs_xs in obs_trajectories:
+            tfin = obs_times[-1]
+            xfin = obs_xs[:,-1]
+            O = box_2d_center(xfin,2*bloating_r) # The agent that has reached its goal, a static obstacle.
+            A, b= O.A,O.b
+            
+            H = A @ x-(b+ np.linalg.norm(A,axis=1) * bloating_r).reshape(-1,1) # Bloating radius
+            alpha = cp.Variable((H.shape[0],K),boolean=True)
+            constraints.append(H[:,1:] + M * (1-alpha)>=0)
+            constraints.append(H[:,:-1] + M * (1-alpha)>=0)
+
+            tfin_active = cp.Variable(K,boolean=True)
+            constraints.append(tfin-t[0,1:]+ M * (1-tfin_active)>=0)
+
+            # Constrain disjunction
+            constraints.append(cp.sum(alpha,axis = 0)+tfin_active>=1)
+                    
+
+    if T_end_constraints is not None:
+        ls = np.array(T_end_constraints).flatten()
+        ls = ls[np.isfinite(ls)]
+        TM = 100 * np.max(ls)
+
+        T_end_alpha = cp.Variable(len(T_end_constraints),boolean = True)
+        for i,(lb,ub) in enumerate(T_end_constraints): 
+            # print(i,lb,ub)   
+            constraints.append(t[0,-1] + TM * (1-T_end_alpha[i])>=lb)
+            if np.isfinite(ub):
+
+                constraints.append(t[0,-1] - TM * (1-T_end_alpha[i])<=ub)
+            
+        constraints.append(cp.sum(T_end_alpha)>=1)
+
+   
+
+    prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
+
+    
+    prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
+    if t.value is not None:
+        return t.value[0,:],x.value
+    else:
+        return None
+    
+
+
+def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajectories, d=2,K=10,t0=0):
     x = cp.Variable((d, K+1))
-    t = cp.Variable((1,K+1))
+    t = cp.Variable((1, K+1))
 
     constraints = []
+
+    M = 5 * np.max(np.abs(env.limits))
 
     # Boundary constraints
     constraints.append(x <= np.array(env.limits)[:,-1].reshape(-1,1) - 3*bloating_r)
@@ -184,73 +238,26 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
     
     tube_obs = []
     for times,xs in obs_trajectories:
-        # start_idx = np.max([0,np.sum(times<t0)-1])
-        # times = times[start_idx:]
-        # xs = xs[:,start_idx:]
-        # print(times,xs)
         tube_obs+=trajectory_to_tube_obstacles(times,xs,bloating_r)
-     
+    
     for Ap,bp in tube_obs:
         Hp = Ap @ tx - (bp + np.linalg.norm(Ap,axis=1)*bloating_r).reshape(-1,1)
         
         alpha = cp.Variable((Hp.shape[0],Hp.shape[1]-1),boolean = True)
-       
+    
         constraints.append(Hp[:,1:] + M * (1-alpha)>=0)
         constraints.append(Hp[:,:-1] + M * (1-alpha)>=0)
 
         constraints.append(cp.sum(alpha,axis = 0)>=1)
 
-    if not ignore_finished_agents:
-        for obs_times,obs_xs in obs_trajectories:
-            tfin = obs_times[-1]
-            xfin = obs_xs[:,-1]
-            O = box_2d_center(xfin,2*bloating_r) # The agent that has reached its goal, a static obstacle.
-            A, b= O.A,O.b
-            
-            H = A @ x-(b+ np.linalg.norm(A,axis=1) * bloating_r).reshape(-1,1) # Bloating radius
-            alpha = cp.Variable((H.shape[0],K),boolean=True)
-            constraints.append(H[:,1:] + M * (1-alpha)>=0)
-            constraints.append(H[:,:-1] + M * (1-alpha)>=0)
-
-            tfin_active = cp.Variable(K,boolean=True)
-            constraints.append(tfin-t[0,1:]+ M * (1-tfin_active)>=0)
-
-            # Constrain disjunction
-            constraints.append(cp.sum(alpha,axis = 0)+tfin_active>=1)
-                    
-
     # Time positivity constraint
     constraints.append(t[0,0]==t0)
     constraints.append(t[0,1:]>=t[0,:-1])
-
-    # T_end_constraint
-    if T_end_constraints is not None:
-        ls = np.array(T_end_constraints).flatten()
-        ls = ls[np.isfinite(ls)]
-        TM = 100 * np.max(ls)
-
-        T_end_alpha = cp.Variable(len(T_end_constraints),boolean = True)
-        for i,(lb,ub) in enumerate(T_end_constraints): 
-            # print(i,lb,ub)   
-            constraints.append(t[0,-1] + TM * (1-T_end_alpha[i])>=lb)
-            if np.isfinite(ub):
-
-                constraints.append(t[0,-1] - TM * (1-T_end_alpha[i])<=ub)
-            
-        constraints.append(cp.sum(T_end_alpha)>=1)
-
     # Velocity constraints
     vb = vmax*(t[0,1:]-t[0,:-1])
     for i in range(d):
         diff = x[i,1:]-x[i,:-1]
         constraints.append(np.sqrt(2) * diff <= vb)
         constraints.append(- vb <= np.sqrt(2) * diff)
-
-    prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
-
     
-    prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
-    if t.value is not None:
-        return t.value[0,:],x.value
-    else:
-        return None
+    return t,x, constraints

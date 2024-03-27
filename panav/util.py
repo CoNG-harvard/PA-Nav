@@ -1,6 +1,7 @@
 import numpy as np
 import itertools
 
+from numpy.linalg import norm
  
 def unit_cube(d):
     '''
@@ -43,3 +44,52 @@ def interpolate_positions(t,x,dt):
         times.append(np.linspace(t[i],t[i+1],n))
     # print(pos,x)
     return  np.hstack(times),np.hstack(pos)
+
+class ParametericCurve:
+    '''
+        The purpose of this class is to represent the piecewise linear continuous curve C:[0,1]-> X.
+
+        Given waypoints w0,w1,...,wn, there is C(0) = w0, C(1) = wn.
+
+        We want the ability to efficiently compute C(t) for any t in [0,1].
+    '''
+    def __init__(self, waypoints):
+        '''
+            waypoints: shape = (space dimension, number of waypoints)
+        '''
+        self.p = waypoints
+
+        K = waypoints.shape[1]
+
+        self.l = np.array([norm(self.p[:,i]-self.p[:,i-1]) for i in range(1,K)])
+        # The lengths of the segments.
+
+        self.L = sum(self.l)
+        self.l /= self.L # Normalize the segment lengths
+
+        self.cumu_l = np.array(self.l)
+        for i in range(1,len(self.cumu_l)):
+            self.cumu_l[i] += self.cumu_l[i-1]
+        
+    def __call__(self,t):
+        return self.at(t) 
+    def at(self,t):
+        if t<0 or t>1:
+            return None
+        
+        # Determine which segment does t belong to
+        seg = 0
+        while seg<len(self.cumu_l) and t>=self.cumu_l[seg]:
+            seg += 1
+        
+        if seg == len(self.cumu_l):
+            return self.p[:,-1]
+        
+        cur_seg_length = self.l[seg]
+
+        overshoot = t - self.cumu_l[seg-1] if seg>0 else t
+
+        alpha =  overshoot/cur_seg_length
+
+        return (1-alpha) * self.p[:,seg] + alpha * self.p[:,seg+1]
+    
