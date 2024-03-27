@@ -12,16 +12,23 @@ def MA_plan_conflict(plan,bloating_r):
         If there is no conflict, return None.
     '''
     for i in range(len(plan)):
-        t,x = plan[i]
-        for j in range(i+1,len(plan)):
-            tp,xp = plan[j]
-            p_conflict = path_conflict(t,x,tp,xp,bloating_r,bloating_r)
-            if p_conflict is not None:
-                ti,pi,tj,pj = p_conflict
-                return ([i,ti,pi],[j,tj,pj])
+        conflicted_obs_trajectory = plan_obs_conflict(plan[i], plan[i+1:], bloating_r)
+        if conflicted_obs_trajectory:
+            return conflicted_obs_trajectory
+        
     return None
 
-def path_conflict(t,x,tp,xp,r,rp):
+def plan_obs_conflict(plan, obstacle_trajectories,bloating_r):
+    if plan:
+        t,x = plan
+        for j in range(len(obstacle_trajectories)):
+            tp,xp = obstacle_trajectories[j]
+            p_conflict = path_path_conflict(t,x,tp,xp,bloating_r,bloating_r)
+            if p_conflict is not None:
+                return obstacle_trajectories[j]
+    return None
+
+def path_path_conflict(t,x,tp,xp,r,rp):
     for k in range(len(t)-1):
         ta = t[k:k+2]
         pa = x[:,k:k+2]
