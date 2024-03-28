@@ -5,7 +5,7 @@ import numpy as np
 
 from panav.PBS.HighLevelSearchTree import PriorityTree, SearchNodeContainer
 from panav.SAMP import Tube_Planning,SA_MILP_Planning
-from panav.PBS.conflict import MA_plan_conflict
+from panav.conflict import MA_plan_conflict
 from panav.util import unique_tx
 from panav.env import line_seg_to_obstacle
 

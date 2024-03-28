@@ -1,4 +1,4 @@
-from panav.PBS.conflict import seg_conflict
+from panav.conflict import seg_conflict
 import numpy as np
 from panav.SIPP import plan_to_transitions, get_edge_type,get_node_type
 def MAPFR_pairwise_conflict(G,plan1,plan2,node_locs,bloating_r):

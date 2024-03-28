@@ -5,7 +5,7 @@ import numpy as np
 
 from panav.PBS.HighLevelSearchTree import PriorityTree, SearchNodeContainer
 from panav.HybridSIPP import HybridSIPP
-from panav.PBS.conflict import MA_plan_conflict
+from panav.conflict import MA_plan_conflict
 from panav.util import unique_tx
 
 

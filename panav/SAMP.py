@@ -212,8 +212,8 @@ def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajec
     M = 5 * np.max(np.abs(env.limits))
 
     # Boundary constraints
-    constraints.append(x <= np.array(env.limits)[:,-1].reshape(-1,1) - 3*bloating_r)
-    constraints.append(x >= np.array(env.limits)[:,0].reshape(-1,1) + 3* bloating_r)
+    constraints.append(x <= np.array(env.limits)[:,-1].reshape(-1,1) - 2*bloating_r)
+    constraints.append(x >= np.array(env.limits)[:,0].reshape(-1,1) + 2*bloating_r)
 
     # Start and goal constraints
     constraints.append(start.A @ x[:,0] <= start.b)
@@ -279,7 +279,23 @@ def track_ref_path(env, start, goal,ref_path, vmax, bloating_r, obstacle_traject
         if t.value is not None:
             return t.value[0,:],x.value
     return None
+def track_ref_path_v2(env, start, goal,ref_path, vmax, bloating_r, obstacle_trajectories,d, max_dev = 1.0):
+    K0 = ref_path.shape[1]-1
+    ref_curve = ParametericCurve(ref_path)
+    for K in range(K0,K0+10):
+        print(K)
+        ref_points = np.array([ref_curve(t) for t in np.linspace(0,1,K+1)]).T
 
+        t,x,constraints = Standard_Tube_Var_Constraints(env, start, goal,vmax, bloating_r,obstacle_trajectories, d, K)
+
+        # constraints.append(cp.norm(x-ref_points,'fro')<=max_dev*(K+1))
+
+        constraints.append(cp.norm(x-ref_points,axis=0)<=max_dev)
+        prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
+        prob.solve()
+        if t.value is not None:
+            return t.value[0,:],x.value
+    return None
 from panav.conflict import plan_obs_conflict
 def lazy_optim(planner, env, start, goal, obstacle_trajectories):
     active = []
