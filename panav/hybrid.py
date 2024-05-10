@@ -24,7 +24,7 @@ class HybridGraph(nx.DiGraph):
         self.agent_radius = agent_radius
 
         self.env = env
-        self.open_spaces = []
+        self.open_spaces = {}
 
         self.start_nodes = []
         self.goal_nodes = []
@@ -41,8 +41,54 @@ class HybridGraph(nx.DiGraph):
         self.tunnels = detect_tunnels(env,agent_radius)
         self.__construct_hybrid_graph__()
 
+        # Initialize the traffic flow.
+        self.__reset_traffic__()
+        self.update_traffic()
+
        
         
+    def __reset_traffic__(self):
+        # Reset the traffic flow to all zero.
+        for e in self.edges:
+            self.edges[e]['flow']=0
+            self.edges[e]['traffic_cost']=0
+
+        for id in self.open_spaces.keys():
+            self.open_spaces[id]['total_flow']=0
+
+        # Update the traffic_costs to the base line.
+        self.update_traffic()
+        
+
+    def update_traffic(self):
+        """
+        Update the traffic cost and open space flows based on current flows on the edges.
+        """
+
+        # Update the total flow on the open spaces
+        for id in self.open_spaces.keys():
+            open_space_nodes = self.open_spaces[id]['nodes']
+            total_flow = 0
+            for u in open_space_nodes:
+                for v in open_space_nodes:
+                    if (u,v) in self.edges:
+                        total_flow+=self.edges[u,v]['flow']
+            self.open_spaces[id]['total_flow'] = total_flow
+
+        # Update the traffic cost on the edges
+        for k,q in self.edges:
+            if self.edges[k,q]['type']=='hard':
+                self.edges[k,q]['traffic_cost'] = (1+self.edges[q,k]['flow'])\
+                                                * (1+self.edges[k,q]['flow'])\
+                                                * self.edges[k,q]['weight']
+            else: # Soft edge
+                open_space = self.get_open_space(k)
+                total_flow = open_space['total_flow']
+                self.edges[k,q]['traffic_cost'] = (1+total_flow-self.edges[k,q]['flow'])\
+                                                * (1+self.edges[k,q]['flow'])\
+                                                * self.edges[k,q]['weight']
+
+
     def __construct_hybrid_graph__(self):
         
         # Every node has a region attribute: a panav.env.Region object.
@@ -123,11 +169,14 @@ class HybridGraph(nx.DiGraph):
                     G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
                     # G_soft.add_edge(u,v,type='soft', weight = np.max(t))
                     
-        self.open_spaces = [c for c in nx.connected_components(nx.to_undirected(G_soft))]
+        open_spaces_nodes = [c for c in nx.connected_components(nx.to_undirected(G_soft))]
+        
+        self.open_spaces = {i:{"nodes":c} for i,c in enumerate(open_spaces_nodes)}
+
         # Give all nodes in the graph an open space id
-        for id, c in enumerate(self.open_spaces):
-            for s in c:
-                self.nodes[s]['open_space_id'] = id
+        for id, space in self.open_spaces.items():
+            for u in space["nodes"]:
+                self.nodes[u]['open_space_id'] = id
 
         # Add soft edges to G
         self.add_edges_from(G_soft.edges(data=True))    
