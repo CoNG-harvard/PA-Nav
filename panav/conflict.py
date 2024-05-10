@@ -1,6 +1,6 @@
 import numpy as np
 
-def MA_plan_conflict(plan,bloating_r):
+def MA_plan_conflict(plan,bloating_r,first = True):
     '''
         Input: the plan, a list of (times,locs) pairs, each represented the timed piecewise-linear agent trajectory.
         
@@ -12,21 +12,25 @@ def MA_plan_conflict(plan,bloating_r):
         If there is no conflict, return None.
     '''
     for i in range(len(plan)):
-        conflicted_obs_trajectory = plan_obs_conflict(plan[i], plan[i+1:], bloating_r)
-        if conflicted_obs_trajectory:
+        conflicted_obs_trajectory = plan_obs_conflict(plan[i], plan[i+1:], bloating_r,first)
+        if first and conflicted_obs_trajectory:
             return conflicted_obs_trajectory
         
     return None
 
-def plan_obs_conflict(plan, obstacle_trajectories,bloating_r):
+def plan_obs_conflict(plan, obstacle_trajectories,bloating_r, first = True):
+    conflicted_trajs = []
     if plan:
         t,x = plan
         for j in range(len(obstacle_trajectories)):
             tp,xp = obstacle_trajectories[j]
             p_conflict = path_path_conflict(t,x,tp,xp,bloating_r,bloating_r)
             if p_conflict is not None:
-                return obstacle_trajectories[j]
-    return None
+                # print('conflict', j)
+                if first:
+                    return obstacle_trajectories[j]
+                conflicted_trajs.append(obstacle_trajectories[j])
+    return conflicted_trajs
 
 def path_path_conflict(t,x,tp,xp,r,rp):
     for k in range(len(t)-1):
