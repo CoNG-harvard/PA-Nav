@@ -2,7 +2,12 @@ import numpy as np
 import itertools
 
 from numpy.linalg import norm
- 
+def count_interger_var(prob):
+    '''
+        prob: a Problem class object in cvxpy.
+        Output: number of integer/binary variables in the problem.
+    '''
+    return sum([v.size for v in prob.variables() if v.boolean_idx or v.integer_idx])
 def unit_cube(d):
     '''
         Return the vertices of a d-dimensional unit cube.

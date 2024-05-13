@@ -18,21 +18,31 @@ def MA_plan_conflict(plan,bloating_r,first = True):
         
     return None
 
-def plan_obs_conflict(plan, obstacle_trajectories,bloating_r, first = True):
-    conflicted_trajs = []
+def plan_obs_conflict(plan, obstacle_trajectories,bloating_r, segments_only = False, return_all = False):
+    conflicts = []
     if plan:
         t,x = plan
         for j in range(len(obstacle_trajectories)):
             tp,xp = obstacle_trajectories[j]
-            p_conflict = path_path_conflict(t,x,tp,xp,bloating_r,bloating_r)
-            if p_conflict is not None:
+            p_conflict = path_path_conflict(t,x,tp,xp,bloating_r,bloating_r,return_all)
+            if p_conflict:
                 # print('conflict', j)
-                if first:
-                    return obstacle_trajectories[j]
-                conflicted_trajs.append(obstacle_trajectories[j])
-    return conflicted_trajs
+                if return_all:
+                    if segments_only:
+                        conflicts += p_conflict
+                    else:
+                        conflicts.append(obstacle_trajectories[j])
+                else: 
+                    if segments_only:
+                        return p_conflict
+                    else:
+                        return obstacle_trajectories[j]
 
-def path_path_conflict(t,x,tp,xp,r,rp):
+    return conflicts
+
+def path_path_conflict(t,x,tp,xp,r,rp,return_all=False):
+    if return_all:
+        conflicts = []
     for k in range(len(t)-1):
         ta = t[k:k+2]
         pa = x[:,k:k+2]
@@ -42,8 +52,14 @@ def path_path_conflict(t,x,tp,xp,r,rp):
             if seg_conflict(ta,pa,tb,pb,r,rp):
                 # print('ta',ta,'pa',pa)
                 # print('tb',tb,'pb',pb)
-                return (ta,pa,tb,pb)
-    return None
+                if return_all:
+                    conflicts.append((ta,pa,tb,pb))
+                else: # Return the first
+                    return (ta,pa,tb,pb)
+    if return_all:
+        return conflicts
+    else:
+        return None
 
 def seg_conflict(ta,pa,tb,pb,ra,rb):
     ''' 

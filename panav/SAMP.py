@@ -136,10 +136,13 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
 def Tube_Planning(env, start, goal, vmax, bloating_r,
                     obs_trajectories=[],\
                      d=2,K=10,t0=0, T_end_constraints = None,
-                     ignore_finished_agents=False
+                     ignore_finished_agents=False,\
+                     goal_reach_eps = None
                      ):
     '''
         Use tube obstacles to model other moving agents instead of temporary obstacles,
+
+        start,goal: start and goal coordinates.
 
         obs_trajectories: a list of tuples (times,xs), corresponding to the trajectory of another agent.
 
@@ -148,12 +151,15 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
                         - The constraint is disjunctive, meaning if lb_i<= t[-1] <=ub_i for some i=1,2,..., then the constraint is satisfied.
 
         ignore_finished_agents: whether ignore agents that have reached there goals or not.
+        
+        goal_reach_eps: distance tolerance for reaching the goal location. By default, goal_reach_eps is set to be the same as bloating_r.
     '''
 
 
     # Decision variables and standard constraints for the path planning problem.
-    t, x, constraints = Standard_Tube_Var_Constraints(env,start,goal,vmax,bloating_r,obs_trajectories, d, K, t0)
+    t, x, constraints = Standard_Tube_Var_Constraints(env,start,goal,vmax,bloating_r,obs_trajectories, d, K, t0, goal_reach_eps)
 
+    print(obs_trajectories)
     # Additional constraints
     M = 5 * np.max(np.abs(env.limits))
     if not ignore_finished_agents:
@@ -194,16 +200,24 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
 
     prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
 
-    
+    print('number of integer constraints:',count_interger_var(prob))
     prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
     if t.value is not None:
         return t.value[0,:],x.value
     else:
         return None
     
+def count_interger_var(prob):
+    '''
+        prob: a Problem class object in cvxpy.
+        Output: number of integer/binary variables in the problem.
+    '''
+    return sum([v.size for v in prob.variables() if v.boolean_idx or v.integer_idx])
 
+def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajectories, d=2,K=10,t0=0, goal_reach_eps=None):
+    if goal_reach_eps is None:
+        goal_reach_eps = bloating_r
 
-def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajectories, d=2,K=10,t0=0):
     x = cp.Variable((d, K+1))
     t = cp.Variable((1, K+1))
 
@@ -216,8 +230,10 @@ def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajec
     constraints.append(x >= np.array(env.limits)[:,0].reshape(-1,1) + 2*bloating_r)
 
     # Start and goal constraints
-    constraints.append(start.A @ x[:,0] <= start.b)
-    constraints.append(goal.A @ x[:,-1] <= goal.b)
+    constraints.append(start == x[:,0])
+    gl = box_2d_center(goal,np.ones(2) * goal_reach_eps)
+    constraints.append(gl.A @ x[:,-1] <= gl.b)
+   
 
 
     # Static obstacle constraints
@@ -239,6 +255,8 @@ def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajec
     tube_obs = []
     for times,xs in obs_trajectories:
         tube_obs+=trajectory_to_tube_obstacles(times,xs,bloating_r)
+
+    print("tube_obs: ", len(tube_obs))
     
     for Ap,bp in tube_obs:
         Hp = Ap @ tx - (bp + np.linalg.norm(Ap,axis=1)*bloating_r).reshape(-1,1)
@@ -297,7 +315,7 @@ def track_ref_path_v2(env, start, goal,ref_path, vmax, bloating_r, obstacle_traj
             return t.value[0,:],x.value
     return None
 from panav.conflict import plan_obs_conflict
-def lazy_optim(planner, env, start, goal, obstacle_trajectories):
+def lazy_optim(planner, env, start, goal, obstacle_trajectories,bloating_r):
     active = []
     m = len(obstacle_trajectories)
 
@@ -308,7 +326,8 @@ def lazy_optim(planner, env, start, goal, obstacle_trajectories):
         if p is None:
             print('Problem becomes infeasible.')
             break
-        conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r)
+        # conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r)
+        conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r,segments_only=True,return_all=True)
         if not conflicted_obs:
             return p
         active.append(conflicted_obs)

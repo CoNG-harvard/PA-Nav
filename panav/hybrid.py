@@ -60,7 +60,7 @@ class HybridGraph(nx.DiGraph):
         self.update_traffic()
         
 
-    def update_traffic(self):
+    def update_traffic(self,update_soft=False):
         """
         Update the traffic cost and open space flows based on current flows on the edges.
         """
@@ -81,12 +81,13 @@ class HybridGraph(nx.DiGraph):
                 self.edges[k,q]['traffic_cost'] = (1+self.edges[q,k]['flow'])\
                                                 * (1+self.edges[k,q]['flow'])\
                                                 * self.edges[k,q]['weight']
-            else: # Soft edge
+            elif update_soft: # Update soft edge if the input specifies they should be updated.
                 open_space = self.get_open_space(k)
                 total_flow = open_space['total_flow']
                 self.edges[k,q]['traffic_cost'] = (1+total_flow-self.edges[k,q]['flow'])\
                                                 * (1+self.edges[k,q]['flow'])\
                                                 * self.edges[k,q]['weight']
+                
 
 
     def __construct_hybrid_graph__(self):
