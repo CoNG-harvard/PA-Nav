@@ -166,6 +166,7 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
                                            ([t_start,t_end],[p_start,p_end]),
                                            ...]
     '''
+    # print("t0",t0)
     tubes= []
     for ta,pa in tube_obs:
         tubes.append(wp_to_tube_obstacle(ta[0],ta[1],
@@ -371,5 +372,38 @@ def Efficient_Tube_Planning(env,start,goal,vmax,bloating_r,obstacle_trajectories
                      d=2,t0=0, T_end_constraints = None,
                      ignore_finished_agents=False,
                      goal_reach_eps = None):
-    planner = lambda env,start,goal,tube_obs: auto_K_tube_planning(env,start,goal,vmax,bloating_r,tube_obs=tube_obs)
+    planner = lambda env,start,goal,tube_obs: auto_K_tube_planning(env,start,goal,vmax,bloating_r,
+                                                                   t0=t0,tube_obs=tube_obs,
+                                                                   d=d,T_end_constraints=T_end_constraints,
+                                                                   ignore_finished_agents=ignore_finished_agents,goal_reach_eps=goal_reach_eps)
+
     return lazy_optim(planner,env,start,goal,obstacle_trajectories,bloating_r)
+
+def milestone_tracking(env,milestones,obstacle_trajectories,vmax,bloating_r):
+    track_path = []
+    cur = milestones[0]
+    t0 = 0
+    for i in range(len(milestones)-1):
+        next_milestone = milestones[i+1]
+        # print(t0)
+        t,x = Efficient_Tube_Planning(env,start = cur, goal = next_milestone,
+                                    vmax=vmax,bloating_r=bloating_r,
+                                    obstacle_trajectories=obstacle_trajectories,t0 = t0)
+        t0 = t[-1]
+        # print(t0)
+        cur = x[:,-1]
+        track_path.append((t[:-1],x[:,:-1]))
+
+        # print('Segment',i)
+    track_path.append((t0,cur.reshape(-1,1)))
+
+    ts = []
+    xs = []
+    for t,x in track_path:
+        ts.append(t)
+        xs.append(x)
+
+    ts = np.hstack(ts)
+    xs = np.hstack(xs)
+    track_path = (ts,xs)
+    return track_path
