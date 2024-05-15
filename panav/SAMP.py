@@ -351,7 +351,7 @@ def lazy_optim(planner, env, start, goal, obstacle_trajectories,bloating_r, retu
     m = sum([len(o[0])-1 for o in obstacle_trajectories])
 
     i = 0
-    while True:
+    while i<=m:
         # print("num obstacle trajectories:{}/{}".format(len(active),m))
         p = planner(env,start,goal,active)
         if p is None:
@@ -364,8 +364,12 @@ def lazy_optim(planner, env, start, goal, obstacle_trajectories,bloating_r, retu
         if not conflicted_obs:
             return p
         active+=conflicted_obs
-       
-        if i>m:
-            break
 
     return None
+
+def Efficient_Tube_Planning(env,start,goal,vmax,bloating_r,obstacle_trajectories,
+                     d=2,t0=0, T_end_constraints = None,
+                     ignore_finished_agents=False,
+                     goal_reach_eps = None):
+    planner = lambda env,start,goal,tube_obs: auto_K_tube_planning(env,start,goal,vmax,bloating_r,tube_obs=tube_obs)
+    return lazy_optim(planner,env,start,goal,obstacle_trajectories,bloating_r)
