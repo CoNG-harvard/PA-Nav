@@ -148,7 +148,7 @@ class HybridGraph(nx.DiGraph):
                 ## Determine if the shortest path between u, v passes through any tunnels
              
                 # Plan the shortest continuous path             
-                path = self.continuous_path_planner(start = self.nodes[u]['region'],goal = self.nodes[v]['region'])
+                path = self.continuous_path_planner(start = self.node_loc(u),goal = self.node_loc(v))
 
                 if path is None:
                     print("Path not find. Consider increasing the K value. Skipping edge ",u,v)

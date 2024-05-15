@@ -19,6 +19,10 @@ def MA_plan_conflict(plan,bloating_r,first = True):
     return None
 
 def plan_obs_conflict(plan, obstacle_trajectories,bloating_r, segments_only = False, return_all = False):
+    '''
+        segments_only: False -> Return the full trajectories that have some conflict with plan.
+                       True -> Return only the line segments in these trajectories that conflict with plan.
+    '''
     conflicts = []
     if plan:
         t,x = plan
@@ -53,9 +57,9 @@ def path_path_conflict(t,x,tp,xp,r,rp,return_all=False):
                 # print('ta',ta,'pa',pa)
                 # print('tb',tb,'pb',pb)
                 if return_all:
-                    conflicts.append((ta,pa,tb,pb))
+                    conflicts.append((tb,pb))
                 else: # Return the first
-                    return (ta,pa,tb,pb)
+                    return (tb,pb)
     if return_all:
         return conflicts
     else:

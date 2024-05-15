@@ -1,6 +1,7 @@
 import cvxpy as cp
 import numpy as np
-from panav.env import trajectory_to_tube_obstacles, box_2d_center, trajectory_to_temp_obstacles
+from panav.env import trajectory_to_tube_obstacles, box_2d_center, trajectory_to_temp_obstacles,wp_to_tube_obstacle
+
 '''
     Mixed-Integer Linear Programming based single agent motion planning algorithms, with dynamic obstacles.
 '''
@@ -132,12 +133,16 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
         return t.value,x.value
     else:
         return None
+ 
 
+   
+    
 def Tube_Planning(env, start, goal, vmax, bloating_r,
-                    obs_trajectories=[],\
+                       obs_trajectories=[],
                      d=2,K=10,t0=0, T_end_constraints = None,
-                     ignore_finished_agents=False,\
-                     goal_reach_eps = None
+                     ignore_finished_agents=False,
+                     goal_reach_eps = None,
+                     tube_obs=[]
                      ):
     '''
         Use tube obstacles to model other moving agents instead of temporary obstacles,
@@ -153,13 +158,25 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
         ignore_finished_agents: whether ignore agents that have reached there goals or not.
         
         goal_reach_eps: distance tolerance for reaching the goal location. By default, goal_reach_eps is set to be the same as bloating_r.
-    '''
 
+
+        tube_obs: additional tube obstacles apart from those in obs_trajectories. 
+                  A list in the format of [
+                                           ([t_start,t_end],[p_start,p_end]),
+                                           ([t_start,t_end],[p_start,p_end]),
+                                           ...]
+    '''
+    tubes= []
+    for ta,pa in tube_obs:
+        tubes.append(wp_to_tube_obstacle(ta[0],ta[1],
+                                       pa[:,0],pa[:,1],bloating_r))
+    for times,xs in obs_trajectories:
+        tubes+=trajectory_to_tube_obstacles(times,xs,bloating_r)
 
     # Decision variables and standard constraints for the path planning problem.
-    t, x, constraints = Standard_Tube_Var_Constraints(env,start,goal,vmax,bloating_r,obs_trajectories, d, K, t0, goal_reach_eps)
+    t, x, constraints = Standard_Tube_Var_Constraints(env,start,goal,vmax,bloating_r,tubes, d, K, t0, goal_reach_eps)
 
-    print(obs_trajectories)
+    # print(obs_trajectories)
     # Additional constraints
     M = 5 * np.max(np.abs(env.limits))
     if not ignore_finished_agents:
@@ -200,10 +217,10 @@ def Tube_Planning(env, start, goal, vmax, bloating_r,
 
     prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
 
-    print('number of integer constraints:',count_interger_var(prob))
+    # print('number of integer constraints:',count_interger_var(prob))
     prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
     if t.value is not None:
-        return t.value[0,:],x.value
+        return unique_tx(t.value[0,:],x.value)
     else:
         return None
     
@@ -214,7 +231,7 @@ def count_interger_var(prob):
     '''
     return sum([v.size for v in prob.variables() if v.boolean_idx or v.integer_idx])
 
-def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajectories, d=2,K=10,t0=0, goal_reach_eps=None):
+def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, tube_obs, d=2,K=10,t0=0, goal_reach_eps=None):
     if goal_reach_eps is None:
         goal_reach_eps = bloating_r
 
@@ -252,11 +269,8 @@ def Standard_Tube_Var_Constraints(env, start, goal, vmax, bloating_r, obs_trajec
 
     tx = cp.vstack([t,x])
     
-    tube_obs = []
-    for times,xs in obs_trajectories:
-        tube_obs+=trajectory_to_tube_obstacles(times,xs,bloating_r)
 
-    print("tube_obs: ", len(tube_obs))
+    # print("tube_obs: ", len(tube_obs))
     
     for Ap,bp in tube_obs:
         Hp = Ap @ tx - (bp + np.linalg.norm(Ap,axis=1)*bloating_r).reshape(-1,1)
@@ -315,24 +329,42 @@ def track_ref_path_v2(env, start, goal,ref_path, vmax, bloating_r, obstacle_traj
             return t.value[0,:],x.value
     return None
 from panav.conflict import plan_obs_conflict
-def lazy_optim(planner, env, start, goal, obstacle_trajectories,bloating_r):
+from panav.util import unique_tx
+def auto_K_tube_planning(env, start, goal, vmax, bloating_r,
+                       obs_trajectories=[],
+                     d=2,t0=0, T_end_constraints = None,
+                     ignore_finished_agents=False,
+                     goal_reach_eps = None,
+                     tube_obs=[],K_max = 10):
+    for K in range(1,K_max+1):
+        p = Tube_Planning(env, start, goal, vmax, bloating_r,
+                       obs_trajectories,
+                     d,K,t0, T_end_constraints,
+                     ignore_finished_agents,
+                     goal_reach_eps,
+                     tube_obs)
+        if p:
+            return p
+    
+def lazy_optim(planner, env, start, goal, obstacle_trajectories,bloating_r, return_all=True):
     active = []
-    m = len(obstacle_trajectories)
+    m = sum([len(o[0])-1 for o in obstacle_trajectories])
 
     i = 0
     while True:
-        print("num obstacle trajectories:{}/{}".format(i,m))
+        # print("num obstacle trajectories:{}/{}".format(len(active),m))
         p = planner(env,start,goal,active)
         if p is None:
             print('Problem becomes infeasible.')
             break
+
+        p = unique_tx(*p)
         # conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r)
-        conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r,segments_only=True,return_all=True)
+        conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r,segments_only=True,return_all=return_all)
         if not conflicted_obs:
             return p
-        active.append(conflicted_obs)
-        
-        i+=1
+        active+=conflicted_obs
+       
         if i>m:
             break
 
