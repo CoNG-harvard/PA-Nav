@@ -7,16 +7,22 @@ def MA_plan_conflict(plan,bloating_r,first = True):
         Output: 
         If there is conflict within the plan, output the  the first conflict.
         The conflict includes the involved agents and conflicted timed line segments.
-                            output = ([agent1, t1, seg1],[agent2, t2, seg2])
+                            output = (agent1, agent2)
         
         If there is no conflict, return None.
-    '''
+    ''' 
+    conflicted_agents = []
     for i in range(len(plan)):
-        conflicted_obs_trajectory = plan_obs_conflict(plan[i], plan[i+1:], bloating_r,first)
-        if first and conflicted_obs_trajectory:
-            return conflicted_obs_trajectory
-        
-    return None
+        conflicted_obs_trajectory = plan_obs_conflict(plan[i], plan[i+1:], bloating_r,return_all=not first)
+        if conflicted_obs_trajectory:
+            j, traj = conflicted_obs_trajectory
+            j += i+1 # Add the proper offset in the index of agent in conflict
+            if first:
+                return (i, j)
+            else:
+                conflicted_agents.append((i,j))
+         
+    return conflicted_agents
 
 def plan_obs_conflict(plan, obstacle_trajectories,bloating_r, segments_only = False, return_all = False):
     '''
@@ -35,12 +41,12 @@ def plan_obs_conflict(plan, obstacle_trajectories,bloating_r, segments_only = Fa
                     if segments_only:
                         conflicts += p_conflict
                     else:
-                        conflicts.append(obstacle_trajectories[j])
+                        conflicts.append((j , obstacle_trajectories[j])) # If returning full trajectories, also give a reference to which agent is in conflict.
                 else: 
                     if segments_only:
                         return p_conflict
                     else:
-                        return obstacle_trajectories[j]
+                        return (j, obstacle_trajectories[j]) # If returning full trajectories, also give a reference to which agent is in conflict.
 
     return conflicts
 

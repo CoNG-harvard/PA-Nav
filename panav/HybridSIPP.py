@@ -100,7 +100,7 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
                         # print("start",s,HG.node_loc(s),"end",u,HG.node_loc(u))
                     
                         plan_result = Tube_Planning(HG.env, 
-                                            HG.nodes[s]['region'],HG.nodes[u]['region'],HG.vmax,HG.agent_radius,
+                                            HG.node_loc(s),HG.node_loc(u),HG.vmax,HG.agent_radius,
                                             obs_continuous_paths,HG.d,
                                             K,t0 = curr_t,
                                             T_end_constraints= [u_safe_intervals[ui]] , ignore_finished_agents=True)

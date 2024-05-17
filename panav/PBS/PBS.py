@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 
 from panav.PBS.HighLevelSearchTree import PriorityTree, SearchNodeContainer
-from panav.SAMP import Tube_Planning,SA_MILP_Planning
+from panav.SAMP import Tube_Planning,SA_MILP_Planning,Efficient_Tube_Planning
 from panav.conflict import MA_plan_conflict
 from panav.util import unique_tx
 from panav.env import line_seg_to_obstacle
@@ -16,12 +16,13 @@ def makespan(plan):
     return np.max([t[-1] for t,x in plan])
 
 
-def PBS(env,vmax,bloating_r,\
-        d,K,t0,\
-        max_iter = 200,metric = 'flowtime',search_type = 'depth_first',\
-        low_level = 'Tube_Planning'
+def PBS(env,vmax,bloating_r,
+        max_iter = 200, metric = 'flowtime',search_type = 'depth_first',
+        low_level_planner = 'Efficient_Tube_Planning'
         ):
     '''
+        Essentially the S2M2 algorithm.
+
         The MAMP algorithm using PBS as the high-level search and tube-based SAMP as the low-level search.
         
         Inputs: 
@@ -36,6 +37,12 @@ def PBS(env,vmax,bloating_r,\
 
             search_type: the branching style used in high-level search, can be either 'depth_first'(fast) or 'best_first'(slow).
     '''
+    if low_level_planner == "Efficient_Tube_Planning":
+        low_level_planner = lambda e, s, g,v,r,obs: Efficient_Tube_Planning(e,s,g,v,r,obs)
+    elif low_level_planner == "Tube_Planning":
+        low_level_planner = lambda e, s, g,v,r,obs: Tube_Planning(e,s,g,v,r,obs)
+    elif low_level_planner == "SA_MILP_Planning":
+        low_level_planner = lambda e, s, g,v,r,obs: SA_MILP_Planning(e,s,g,v,r,obs) 
     agents = set(np.arange(len(env.starts)))
     if metric == 'flowtime':
         metric = flowtime
@@ -49,9 +56,8 @@ def PBS(env,vmax,bloating_r,\
     for agent in agents:
         start,goal = env.starts[agent],env.goals[agent]
 
-        t, xs = Tube_Planning(env,start,goal,vmax,bloating_r,\
-                                     [],\
-                                    d,K,t0)
+        t, xs = low_level_planner(env,start,goal,vmax,bloating_r,[])
+
         t,xs = unique_tx(t,xs)
         plan0.append((t,xs))
 
@@ -72,10 +78,10 @@ def PBS(env,vmax,bloating_r,\
         solution = PT.get_solution(parent_node)
 
         conflict = MA_plan_conflict(solution,bloating_r) # Look for the first conflict.
-        if conflict is None:
+        if not conflict:
             return solution, cost
         else:
-            ([a1,_,_],[a2,_,_]) = conflict # Get the two agents involved in the conflict.
+            (a1,a2) = conflict # Get the two agents involved in the conflict.
 
         prev_ordering = PT.get_ordering(parent_node)
         new_PT_nodes = PriorityQueue()
@@ -107,26 +113,9 @@ def PBS(env,vmax,bloating_r,\
                 
                 result = []
 
-                if low_level == "SA_MILP_Planning":
-                    temp_obstacles = []
-                    for av in agents_to_avoid:
-                        t,xs = new_plan[av]
-                        # print('t',t,'xs',xs)
-                        for k in range(xs.shape[-1]-1):
-                            temp_obstacles.append(([t[k],t[k+1]],\
-                                                   line_seg_to_obstacle(xs[:,k],xs[:,k+1],bloating_r)))
-                    result = SA_MILP_Planning(env,start,goal,vmax,bloating_r,\
-                                temp_obstacles,\
-                                d,K,t0)
-                else:
-                    if low_level != "Tube_Planning":
-                        print("Low level {} not supported yet. Using Tube_Planning instead.".format(low_level))
+                obs_trajectories = [new_plan[av] for av in agents_to_avoid]
 
-                    obs_trajectories = [new_plan[av] for av in agents_to_avoid]
-
-                    result = Tube_Planning(env,start,goal,vmax,bloating_r,\
-                                         obs_trajectories,\
-                                        d,K,t0)
+                result = low_level_planner(env,start,goal,vmax,bloating_r,obs_trajectories)
 
 
                 # print("result",result)

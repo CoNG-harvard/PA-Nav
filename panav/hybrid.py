@@ -115,7 +115,7 @@ class HybridGraph(nx.DiGraph):
 
             self.tunnel_nodes.extend([u,v])
 
-        starts,goals = self.env.starts, self.env.goals
+        starts,goals = self.env.start_regions, self.env.goal_regions
         # Add start nodes
         self.start_nodes = list(np.arange(self.number_of_nodes(),
                 self.number_of_nodes()+len(starts)))

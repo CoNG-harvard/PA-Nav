@@ -47,8 +47,10 @@ def SA_MILP_Planning(env, start, goal, vmax, bloating_r,
     constraints.append(x >= np.array(env.limits)[:,0].reshape(-1,1) + 3* bloating_r)
 
     # Start and goal constraints
-    constraints.append(start.A @ x[:,0] <= start.b)
-    constraints.append(goal.A @ x[:,-1] <= goal.b)
+    # Start and goal constraints
+    constraints.append(start == x[:,0])
+    gl = box_2d_center(goal,np.ones(2) * bloating_r)
+    constraints.append(gl.A @ x[:,-1] <= gl.b)
 
 
     # Create temp_obstalces if needed

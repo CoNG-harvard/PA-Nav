@@ -12,15 +12,18 @@ from polytope import qhull
 
 
 class NavigationEnv:
-    def __init__(self, limits=[], obstacles=[],starts=[],goals=[]):
+    def __init__(self, limits=[], obstacles=[],start_regions=[],goal_regions=[]):
 
         self.limits = limits # Boundary limits at each axis. limits[0]-> x axis, limits[1]-> y axis, limits[2]-> z axis.
         # obstacles are Region class objects.
         self.obstacles = obstacles
         
         # starts and goals are Region class objects.
-        self.starts = starts
-        self.goals = goals       
+        self.start_regions = start_regions
+        self.goal_regions = goal_regions     
+
+        self.starts = [s.centroid().coords[0] for s in self.start_regions]
+        self.goals = [g.centroid().coords[0] for g in self.goal_regions]
       
         
 

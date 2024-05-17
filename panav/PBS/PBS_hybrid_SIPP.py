@@ -64,10 +64,10 @@ def PBS_hybrid_SIPP(HG,max_iter = 200,metric = 'flowtime',search_type = 'depth_f
         g_joint_plan,c_joint_plan = PT.get_solution(parent_node)
 
         conflict = MA_plan_conflict(c_joint_plan,HG.agent_radius) # Look for the first conflict.
-        if conflict is None:
+        if not conflict:
             return (g_joint_plan,c_joint_plan), cost
         else:
-            ([a1,_,_],[a2,_,_]) = conflict # Get the two agents involved in the conflict.
+            (a1,a2) = conflict # Get the two agents involved in the conflict.
 
         prev_ordering = PT.get_ordering(parent_node)
         new_PT_nodes = PriorityQueue()
