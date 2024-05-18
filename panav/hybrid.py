@@ -43,22 +43,17 @@ class HybridGraph(nx.DiGraph):
 
         # Initialize the traffic flow.
         self.__reset_traffic__()
-        self.update_traffic()
-
        
         
     def __reset_traffic__(self):
         # Reset the traffic flow to all zero.
         for e in self.edges:
             self.edges[e]['flow']=0
-            self.edges[e]['traffic_cost']=0
+            self.edges[e]['traffic_cost']=self.edges[e]['weight']
 
         for id in self.open_spaces.keys():
             self.open_spaces[id]['total_flow']=0
 
-        # Update the traffic_costs to the base line.
-        self.update_traffic()
-        
 
     def update_traffic(self,update_soft=False):
         """
@@ -78,14 +73,17 @@ class HybridGraph(nx.DiGraph):
         # Update the traffic cost on the edges
         for k,q in self.edges:
             if self.edges[k,q]['type']=='hard':
-                self.edges[k,q]['traffic_cost'] = (1+self.edges[q,k]['flow'])\
-                                                * (1+self.edges[k,q]['flow'])\
+                                                  # This is also known as the contra-flow cost
+                self.edges[k,q]['traffic_cost'] = (1+self.edges[q,k]['flow']
+                                                * (self.edges[k,q]['flow']+1))\
                                                 * self.edges[k,q]['weight']
-            elif update_soft: # Update soft edge if the input specifies they should be updated.
+                
+            elif update_soft: 
+                # Update soft edge if the input specifies they should be updated.
                 open_space = self.get_open_space(k)
                 total_flow = open_space['total_flow']
-                self.edges[k,q]['traffic_cost'] = (1+total_flow-self.edges[k,q]['flow'])\
-                                                * (1+self.edges[k,q]['flow'])\
+                self.edges[k,q]['traffic_cost'] = (1+(total_flow-self.edges[k,q]['flow'])\
+                                                * (self.edges[k,q]['flow']+1))\
                                                 * self.edges[k,q]['weight']
                 
 

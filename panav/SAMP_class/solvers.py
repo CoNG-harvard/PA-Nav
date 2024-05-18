@@ -1,7 +1,7 @@
 import cvxpy as cp
 import numpy as np
 from panav.env import trajectory_to_tube_obstacles, box_2d_center, trajectory_to_temp_obstacles,wp_to_tube_obstacle
-from panav.util import unique_tx
+from panav.util import unique_tx,ParametericCurve
 from panav.conflict import plan_obs_conflict
 class SAMP_Base:
     '''
@@ -22,7 +22,7 @@ class SAMP_Base:
         raise NotImplementedError
     
     
-    def lazy_optim(self, obstacle_trajectories=[], return_all=True):
+    def lazy_plan(self, obstacle_trajectories=[], return_all=True):
         '''
             Assuming the obstacle trajectories can be broken down into active segments.
 
@@ -211,3 +211,50 @@ class Tube_Planning(SAMP_Base):
 
 
 
+class Path_Tracking(Tube_Planning):
+    def __init__(self, env, start, goal, milestones=[],max_dev = 1.0, vmax=1, bloating_r=0.5, d=2, t0=0, K_max=10, T_end_constraints=None, ignore_finished_agents=False, goal_reach_eps=None) -> None:
+        super().__init__(env, start, goal, vmax, bloating_r, d, t0, K_max, T_end_constraints, ignore_finished_agents, goal_reach_eps)
+        '''
+            milestones: a list of locations between start and goal (excluded) to be visited.
+            max_dev: maximal deviation from the milestones when visiting.
+        '''
+        self.milestones = milestones
+        self.max_dev = max_dev
+    
+    def plan(self, active_obstacles=[], obstacle_trajectories=[], K="auto"):
+        return super().plan(active_obstacles, obstacle_trajectories, K)
+
+    def plan_core(self, active_obstacles=[], obs_trajectories=[], solve_inplace=True):
+        '''
+            Planning to track the milestones while observing other tube planning constraints.
+
+            For now, we don't require the milestones be followed in specific order. As long as they are all visited, we deem it okay.
+        '''
+        # Get the usual constraints from simple tube planning
+        t,x,constraints,_ = super().plan_core(active_obstacles, obs_trajectories, solve_inplace=False)
+        
+        # Add the path tracking loss
+        if len(self.milestones)>0:
+            n_milestones = self.milestones.shape[1]
+            alpha = cp.Variable((self.K,n_milestones),boolean =True)
+            M = 5 * np.max(np.abs(self.env.limits))
+
+            for m in range(n_milestones):
+                for i in range(self.K):
+                    constraints.append(cp.norm(x[:,i]-self.milestones[:,m],1)<=self.max_dev+(1-alpha[i,m])*M)
+
+            for m in range(n_milestones):
+                constraints.append(cp.sum(alpha[:,m])>=1) # This ensures some x[:,i] is within max_dev of milestones[:,m]
+
+        prob = cp.Problem(cp.Minimize(t[0,-1]),constraints)
+      
+
+        if not solve_inplace:
+            return t,x,constraints,prob
+        else:
+            # print('number of integer constraints:',count_interger_var(prob))
+            prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
+            if t.value is not None:
+                return unique_tx(t.value[0,:],x.value)
+            else:
+                return None
