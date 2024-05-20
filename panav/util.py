@@ -2,6 +2,12 @@ import numpy as np
 import itertools
 
 from numpy.linalg import norm
+
+
+def flowtime(plan):
+    return np.sum([t[-1] for t,x in plan])
+def makespan(plan):
+    return np.max([t[-1] for t,x in plan])
 def count_interger_var(prob):
     '''
         prob: a Problem class object in cvxpy.

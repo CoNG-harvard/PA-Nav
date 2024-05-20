@@ -4,21 +4,16 @@ import networkx as nx
 import numpy as np
 
 from panav.PBS.HighLevelSearchTree import PriorityTree, SearchNodeContainer
-from panav.SAMP import Tube_Planning,SA_MILP_Planning,Efficient_Tube_Planning
+from panav.SAMP_class.solvers import Tube_Planning,Simple_MILP_Planning
 from panav.conflict import MA_plan_conflict
-from panav.util import unique_tx
-from panav.env import line_seg_to_obstacle
+from panav.util import unique_tx,flowtime,makespan
+from panav.environment.utils import line_seg_to_obstacle
 
-
-def flowtime(plan):
-    return np.sum([t[-1] for t,x in plan])
-def makespan(plan):
-    return np.max([t[-1] for t,x in plan])
 
 
 def PBS(env,vmax,bloating_r,
         max_iter = 200, metric = 'flowtime',search_type = 'depth_first',
-        low_level_planner = 'Efficient_Tube_Planning'
+        low_level_planner = 'Simple_MILP_Planning'
         ):
     '''
         Essentially the S2M2 algorithm.
@@ -37,12 +32,20 @@ def PBS(env,vmax,bloating_r,
 
             search_type: the branching style used in high-level search, can be either 'depth_first'(fast) or 'best_first'(slow).
     '''
-    if low_level_planner == "Efficient_Tube_Planning":
-        low_level_planner = lambda e, s, g,v,r,obs: Efficient_Tube_Planning(e,s,g,v,r,obs)
-    elif low_level_planner == "Tube_Planning":
-        low_level_planner = lambda e, s, g,v,r,obs: Tube_Planning(e,s,g,v,r,obs)
-    elif low_level_planner == "SA_MILP_Planning":
-        low_level_planner = lambda e, s, g,v,r,obs: SA_MILP_Planning(e,s,g,v,r,obs) 
+    # if low_level_planner == "Efficient_Tube_Planning":
+    #     low_level_planner = lambda e, s, g,v,r,obs: Efficient_Tube_Planning(e,s,g,v,r,obs)
+    # elif low_level_planner == "Tube_Planning":
+    #     low_level_planner = lambda e, s, g,v,r,obs: Tube_Planning(e,s,g,v,r,obs)
+    # elif low_level_planner == "SA_MILP_Planning":
+    #     low_level_planner = lambda e, s, g,v,r,obs: SA_MILP_Planning(e,s,g,v,r,obs) 
+
+
+    if low_level_planner == "Tube_Planning":
+        low_level_planner = Tube_Planning
+    elif low_level_planner == "Simple_MILP_Planning":
+        low_level_planner = Simple_MILP_Planning
+
+
     agents = set(np.arange(len(env.starts)))
     if metric == 'flowtime':
         metric = flowtime
@@ -56,7 +59,11 @@ def PBS(env,vmax,bloating_r,
     for agent in agents:
         start,goal = env.starts[agent],env.goals[agent]
 
-        t, xs = low_level_planner(env,start,goal,vmax,bloating_r,[])
+
+        ############### Calling low-level SAMP planner to initialize the individual agent path ####################
+        solver = low_level_planner(env,start,goal,vmax = vmax,bloating_r=bloating_r)
+        t, xs = solver.plan(obstacle_trajectories=[])
+        ########################################################################################################
 
         t,xs = unique_tx(t,xs)
         plan0.append((t,xs))
@@ -115,10 +122,11 @@ def PBS(env,vmax,bloating_r,
 
                 obs_trajectories = [new_plan[av] for av in agents_to_avoid]
 
-                result = low_level_planner(env,start,goal,vmax,bloating_r,obs_trajectories)
+                ############### Calling low-level SAMP planner to compute the individual agent path ####################
+                solver = low_level_planner(env,start,goal,vmax=vmax,bloating_r=bloating_r)
+                result = solver.plan(obstacle_trajectories=obs_trajectories)
+                ########################################################################################################
 
-
-                # print("result",result)
                 if result is not None:
                     new_plan[agent_to_update] = unique_tx(*result)
                     agents_to_avoid.append(agent_to_update)

@@ -1,5 +1,5 @@
 import numpy as np
-from panav.env import box_2d_center
+from panav.environment.utils import box_2d_center
 
 from shapely import Polygon,LineString
 from shapely.ops import nearest_points

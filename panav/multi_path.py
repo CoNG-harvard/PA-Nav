@@ -1,6 +1,6 @@
 import cvxpy as cp
 import numpy as np
-from panav.env import line_seg_to_obstacle
+from panav.environment import line_seg_to_obstacle
 
 def shortest_path(env,start,goal,K=2,d=2,
                   existing_paths = [],

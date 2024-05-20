@@ -57,7 +57,7 @@ def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None):
     # Use a square aspect ratio
     ax.set_aspect('equal', adjustable='box')
 
-    if env.starts or env.goals:
+    if env.starts is not None or env.goals is not None:
         ax.legend()
 
 def draw_obstacle(o,ax):
@@ -206,7 +206,8 @@ def draw_soft_hard(G,node_locs,ax=None, with_labels=False,node_size=5):
 
 import networkx as nx
 from panav.util import interpolate_positions
-from panav.env import NavigationEnv, box_2d_center
+from panav.environment.env import NavigationEnv
+from panav.environment.utils import box_2d_center
 
 def animate_MAPF_R(G,node_locs,
                 obs_paths,agent_paths,

@@ -1,6 +1,6 @@
 import cvxpy as cp
 import numpy as np
-from panav.env import trajectory_to_tube_obstacles, box_2d_center, trajectory_to_temp_obstacles,wp_to_tube_obstacle
+from panav.environment import trajectory_to_tube_obstacles, box_2d_center, trajectory_to_temp_obstacles,wp_to_tube_obstacle
 
 '''
     Mixed-Integer Linear Programming based single agent motion planning algorithms, with dynamic obstacles.
