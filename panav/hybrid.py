@@ -2,7 +2,7 @@ import networkx as nx
 from itertools import product
 from functools import partial
 
-from panav.SAMP import Tube_Planning
+from panav.SAMP.archaic import Tube_Planning
 from panav.tunnels import detect_tunnels, get_entry_exit
 from panav.util import unique_tx
 

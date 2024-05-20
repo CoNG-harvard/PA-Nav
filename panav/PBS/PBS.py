@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 
 from panav.PBS.HighLevelSearchTree import PriorityTree, SearchNodeContainer
-from panav.SAMP_class.solvers import Tube_Planning,Simple_MILP_Planning
+from panav.SAMP.solvers import Tube_Planning,Simple_MILP_Planning
 from panav.conflict import MA_plan_conflict
 from panav.util import unique_tx,flowtime,makespan
 from panav.environment.utils import line_seg_to_obstacle

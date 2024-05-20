@@ -4,7 +4,7 @@ import numpy as np
 from queue import PriorityQueue
 from panav.SIPP import compute_safe_intervals, compute_edge_weights, interval_intersection, plan_to_transitions
 from panav.util import unique_tx
-from panav.SAMP import Tube_Planning, SA_MILP_Planning
+from panav.SAMP.archaic import Tube_Planning, SA_MILP_Planning
 from copy import deepcopy
 
 
