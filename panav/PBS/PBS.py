@@ -2,6 +2,7 @@ from queue import PriorityQueue
 from copy import deepcopy
 import networkx as nx
 import numpy as np
+from time import time
 
 from panav.PBS.HighLevelSearchTree import PriorityTree, SearchNodeContainer
 from panav.SAMP.solvers import Tube_Planning,Simple_MILP_Planning
@@ -11,9 +12,11 @@ from panav.environment.utils import line_seg_to_obstacle
 
 
 
+
 def PBS(env,vmax,bloating_r,
         max_iter = 200, metric = 'flowtime',search_type = 'depth_first',
-        low_level_planner = 'Simple_MILP_Planning'
+        low_level_planner = 'Simple_MILP_Planning',
+        TIMEOUT = 120
         ):
     '''
         Essentially the S2M2 algorithm.
@@ -39,6 +42,7 @@ def PBS(env,vmax,bloating_r,
     # elif low_level_planner == "SA_MILP_Planning":
     #     low_level_planner = lambda e, s, g,v,r,obs: SA_MILP_Planning(e,s,g,v,r,obs) 
 
+    t0 = time()
 
     if low_level_planner == "Tube_Planning":
         low_level_planner = Tube_Planning
@@ -125,6 +129,9 @@ def PBS(env,vmax,bloating_r,
                 ############### Calling low-level SAMP planner to compute the individual agent path ####################
                 solver = low_level_planner(env,start,goal,vmax=vmax,bloating_r=bloating_r)
                 result = solver.plan(obstacle_trajectories=obs_trajectories)
+
+                if time()-t0>TIMEOUT:# Stop early if runtime exceeds TIMEOUT.
+                    return None,None
                 ########################################################################################################
 
                 if result is not None:

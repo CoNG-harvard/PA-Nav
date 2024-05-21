@@ -1,14 +1,17 @@
 import networkx as nx
 import numpy as np
+from time import time
 
 from panav.SAMP.solvers import Path_Tracking
 
-def TAHP(HG,vmax,bloating_r):
+
+def TAHP(HG,vmax,bloating_r,TIMEOUT = 120):
     '''
     HG: a hybrid graph class object.
     
     Output: a conflict-free multi-agent PWL path, in the form of [[ts_i,xs_i] for i in angents]
     '''
+    t0 = time()
     continuous_plans = []
     paths = traffic_aware_HG_plan(HG)
     for i,path in enumerate(paths):
@@ -21,6 +24,10 @@ def TAHP(HG,vmax,bloating_r):
                             milestones=milestones,max_dev=0.2,vmax=vmax,bloating_r=bloating_r)
 
         p = solver.plan(obstacle_trajectories=continuous_plans)    
+        
+        if time()-t0>TIMEOUT: # Stop early if runtime exceeds TIMEOUT.
+            return None
+        
         continuous_plans.append(p)
     return continuous_plans
 
