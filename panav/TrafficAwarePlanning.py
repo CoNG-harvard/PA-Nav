@@ -28,6 +28,9 @@ def TAHP(HG,vmax,bloating_r,TIMEOUT = 120):
         if time()-t0>TIMEOUT: # Stop early if runtime exceeds TIMEOUT.
             return None
         
+        if p is None: # The problem becomes infeasible.
+            return None
+        
         continuous_plans.append(p)
     return continuous_plans
 

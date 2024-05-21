@@ -5,6 +5,9 @@ from numpy.linalg import norm
 
 
 def flowtime(plan):
+    for p in plan:
+        if p is None:
+            print(p)
     return np.sum([t[-1] for t,x in plan])
 def makespan(plan):
     return np.max([t[-1] for t,x in plan])

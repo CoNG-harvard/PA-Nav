@@ -174,7 +174,7 @@ class Simple_MILP_Planning(SAMP_Base):
             for obs_times,obs_xs in obstacle_trajectories:
                 tfin = obs_times[-1]
                 xfin = obs_xs[:,-1]
-                O = box_2d_center(xfin,2*self.bloating_r) # The agent that has reached its goal, a static obstacle.
+                O = box_2d_center(xfin,4 * self.bloating_r) # The agent that has reached its goal, a static obstacle.
                 A, b= O.A,O.b
                 
                 H = A @ x-(b+ np.linalg.norm(A,axis=1) * self.bloating_r).reshape(-1,1) # Bloating radius
@@ -305,7 +305,7 @@ class Tube_Planning(SAMP_Base):
             for obs_times,obs_xs in obstacle_trajectories:
                 tfin = obs_times[-1]
                 xfin = obs_xs[:,-1]
-                O = box_2d_center(xfin,2*self.bloating_r) # The agent that has reached its goal, a static obstacle.
+                O = box_2d_center(xfin,4 * self.bloating_r) # The agent that has reached its goal, a static obstacle.
                 A, b= O.A,O.b
                 
                 H = A @ x-(b+ np.linalg.norm(A,axis=1) *self.bloating_r).reshape(-1,1) # Bloating radius

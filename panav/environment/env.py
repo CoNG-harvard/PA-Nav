@@ -26,7 +26,7 @@ class DefaultEmtpyEnv(NavigationEnv):
         top, bottom = limits[1][1]*0.8,limits[1][0]*0.8
 
         start_x_offset = abs(limits[0][0]) * 0.7
-        goal_x_offset = start_x_offset+2
+        goal_x_offset = start_x_offset + 3.0
 
         if N_agent % 2 == 0:
             N1 = N2 = N_agent // 2
@@ -46,10 +46,10 @@ class DefaultEmtpyEnv(NavigationEnv):
         super().__init__(limits, [], start_locs, goal_locs)
 
 class MultiTunnelEnv(DefaultEmtpyEnv):
-    def __init__(self,n_tunnel, tunnel_width, limits=[(-10, 10), (-10, 10)], N_agent=6):
+    def __init__(self,n_tunnel, tunnel_width, limits=[(-10, 10), (-10, 10)], N_agent=6,wallthickness = 10.0):
         super().__init__(limits, N_agent)
         
         y_min,y_max = min(limits[1]),max(limits[1])
-        obstacles = multi_tunnel_wall(n_tunnel,tunnel_width,y_min,y_max)
+        obstacles = multi_tunnel_wall(n_tunnel,tunnel_width,y_min,y_max,wall_thickness=wallthickness)
 
         self.obstacles = obstacles
