@@ -221,7 +221,9 @@ class Simple_MILP_Planning(SAMP_Base):
             # print('number of integer constraints:',count_interger_var(prob))
             prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
             if t.value is not None:
-                return unique_tx(t.value,x.value)
+                out = unique_tx(t.value,x.value)
+                del prob
+                return out
             else:
                 return None
 
@@ -343,7 +345,9 @@ class Tube_Planning(SAMP_Base):
             # print('number of integer constraints:',count_interger_var(prob))
             prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
             if t.value is not None:
-                return unique_tx(t.value[0,:],x.value)
+                out = unique_tx(t.value[0,:],x.value)
+                del prob
+                return out
             else:
                 return None
         
@@ -461,6 +465,8 @@ class Path_Tracking(Tube_Planning):
             # print('number of integer constraints:',count_interger_var(prob))
             prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
             if t.value is not None:
-                return unique_tx(t.value[0,:],x.value)
+                out = unique_tx(t.value[0,:],x.value)
+                del prob
+                return out
             else:
                 return None
