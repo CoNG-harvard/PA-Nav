@@ -1,4 +1,29 @@
 import networkx as nx
+import numpy as np
+
+from panav.SAMP.solvers import Path_Tracking
+
+def TAHP(HG,vmax,bloating_r):
+    '''
+    HG: a hybrid graph class object.
+    
+    Output: a conflict-free multi-agent PWL path, in the form of [[ts_i,xs_i] for i in angents]
+    '''
+    continuous_plans = []
+    paths = traffic_aware_HG_plan(HG)
+    for i,path in enumerate(paths):
+        # print("Planning for {}/{}".format(i,len(paths)))
+        start = HG.node_loc(path[0])
+        goal = HG.node_loc(path[-1])
+        
+        milestones = np.array([HG.node_loc(u) for u in path[1:-1]]).T
+        solver = Path_Tracking(HG.env,start,goal,
+                            milestones=milestones,max_dev=0.2,vmax=vmax,bloating_r=bloating_r)
+
+        p = solver.plan(obstacle_trajectories=continuous_plans)    
+        continuous_plans.append(p)
+    return continuous_plans
+
 def traffic_aware_HG_plan(HG,consider_soft_traffic=False):
     '''
         HG: a hybrid graph class object.
