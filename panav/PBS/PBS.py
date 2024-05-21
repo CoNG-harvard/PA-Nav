@@ -130,6 +130,7 @@ def PBS(env,vmax,bloating_r,
                 solver = low_level_planner(env,start,goal,vmax=vmax,bloating_r=bloating_r)
                 result = solver.plan(obstacle_trajectories=obs_trajectories)
 
+                print("PBS Time Elapsed:", time()-t0)
                 if time()-t0>TIMEOUT:# Stop early if runtime exceeds TIMEOUT.
                     return None,None
                 ########################################################################################################
