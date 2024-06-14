@@ -5,14 +5,17 @@ from panav.util import unique_tx, count_interger_var
 from panav.conflict import plan_obs_conflict
 class SAMP_Base:
     '''
-        The base class for Single Angle Motion Planning(SAMP) solvers.
+        The base class for Single Agent Motion Planning(SAMP) solvers.
     '''
-    def __init__(self,env,start,goal,bloating_r = 0.5,vmax=1.0) -> None:
+    def __init__(self,env,start,goal,bloating_r = 0.5,vmax=1.0,K_max=10) -> None:
         self.env = env
         self.start = start
         self.goal = goal
         self.bloating_r = bloating_r
         self.vmax = vmax
+        self.K = 1
+        self.K_max = K_max
+        self.K_INC  = 1
     
     def plan(self,active_obstacles=[],obstacle_trajectories=[],lazy = True):
         if not lazy:
@@ -20,14 +23,7 @@ class SAMP_Base:
         else:
             return self.lazy_plan(obstacle_trajectories)
 
-    def plan_plain(self,active_obstacles=[],obstacles_trajectories=[]):
-        '''
-            active_obstacles: typically individual segments of moving obstacles.
-            obstacle_trajectories: typically entire trajectories of moving obstacles.
-        '''
-        raise NotImplementedError
-    
-    
+      
     def lazy_plan(self, obstacle_trajectories=[], return_all=True):
         '''
             Assuming the obstacle trajectories can be broken down into active segments.
@@ -44,8 +40,7 @@ class SAMP_Base:
         while i<=m:
             print("num obstacle trajectories:{}/{}".format(len(active_obs),m))
             p = self.plan_plain(active_obstacles=active_obs,K_min=K_min)
-            K_min = len(p[0])-1
-            print("K_min",K_min)
+           
             if p is None:
                 print('Problem becomes infeasible.')
                 break
@@ -56,8 +51,35 @@ class SAMP_Base:
                                                segments_only=True,return_all=return_all)
             if not conflicted_obs:
                 return p
+            
+            K_min = len(p[0])-1 # len(p[0])-1 is the latest K value.
+            print("K_min",K_min)
+
             active_obs+=conflicted_obs
         return None
+    
+    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K_min = 1):
+        
+        self.K = K_min
+        while self.K<=self.K_max:
+            p = self.plan_core(active_obstacles,obstacle_trajectories)
+            # print(K,p)
+            if p:
+                self.K = 1 # Reset self.K 
+                return p
+            else: 
+                self.K += self.K_INC
+
+        # Solution not found even after exhausting all possible K.
+        self.K = 1 # Reset self.K
+        return None 
+    
+    def plan_core(self,active_obstacles=[],obstacles_trajectories=[]):
+            '''
+                active_obstacles: typically individual segments of moving obstacles.
+                obstacle_trajectories: typically entire trajectories of moving obstacles.
+            '''
+            raise NotImplementedError
 
 class Simple_MILP_Planning(SAMP_Base):
     def __init__(self, env, start, goal, vmax = 1.0,bloating_r=0.5, d=2,K_max=10,t0=0,T_end_constraints = None,ignore_finished_agents=False) -> None:
@@ -80,11 +102,9 @@ class Simple_MILP_Planning(SAMP_Base):
 
 
         '''
-        super().__init__(env, start, goal, bloating_r)
-        self.vmax = vmax
+        super().__init__(env, start, goal, bloating_r,vmax,K_max)
+ 
         self.d = d
-        self.K = 1
-        self.K_max = K_max
         self.t0 = t0
         self.T_end_constraints = T_end_constraints
         self.ignore_finished_agents = ignore_finished_agents
@@ -93,21 +113,7 @@ class Simple_MILP_Planning(SAMP_Base):
     def plan(self,active_obstacles=[],obstacle_trajectories=[]):
         return self.plan_plain(active_obstacles,obstacle_trajectories)
 
-    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K_min = 1):
-        
-        self.K = K_min
-        while self.K<=self.K_max:
-            p = self.plan_core(active_obstacles,obstacle_trajectories)
-            # print(K,p)
-            if p:
-                self.K = 1 # Reset self.K 
-                return p
-            else: 
-                self.K+=1
 
-        # Solution not found even after exhausting all possible K.
-        self.K = 1 # Reset self.K
-        return None 
         
     def plan_core(self,active_obstacles=[],obstacle_trajectories=[],solve_inplace = True):
         '''
@@ -253,37 +259,19 @@ class Tube_Planning(SAMP_Base):
 
         '''
         
-        super().__init__(env,start,goal)
+        super().__init__(env,start,goal,bloating_r,vmax,K_max)
 
          
-        self.vmax = vmax
-        self.bloating_r = bloating_r
+        
         self.d = d
         self.t0 = t0
-
-        self.K = K_max
-        self.K_max = K_max
 
         self.T_end_constraints = T_end_constraints
         self.ignore_finished_agents = ignore_finished_agents
         self.goal_reach_eps = goal_reach_eps if goal_reach_eps else bloating_r
 
 
-    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K_min = 1):
-            
-            self.K = K_min
-            while self.K<=self.K_max:
-                p = self.plan_core(active_obstacles,obstacle_trajectories)
-                # print(K,p)
-                if p:
-                    self.K = 1 # Reset self.K 
-                    return p
-                else: 
-                    self.K+=1
 
-            # Solution not found even after exhausting all possible K.
-            self.K = 1 # Reset self.K
-            return None 
     
     def plan_core(self,active_obstacles=[],obstacle_trajectories=[],solve_inplace = True):
         '''
@@ -438,8 +426,6 @@ class Path_Tracking(Tube_Planning):
         self.milestones = milestones
         self.max_dev = max_dev
     
-    def plan_plain(self, active_obstacles=[], obstacle_trajectories=[], K_min=1):
-        return super().plan_plain(active_obstacles, obstacle_trajectories, K_min)
 
     def plan_core(self, active_obstacles=[], obstacle_trajectories=[], solve_inplace=True):
         '''
