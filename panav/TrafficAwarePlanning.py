@@ -15,7 +15,7 @@ def TAHP(HG,vmax,bloating_r,TIMEOUT = 120):
     continuous_plans = []
     paths = traffic_aware_HG_plan(HG)
     for i,path in enumerate(paths):
-        # print("Planning for {}/{}".format(i,len(paths)))
+        print("Planning for {}/{}".format(i,len(paths)))
         start = HG.node_loc(path[0])
         goal = HG.node_loc(path[-1])
         

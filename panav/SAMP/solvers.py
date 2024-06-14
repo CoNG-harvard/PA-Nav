@@ -1,7 +1,7 @@
 import cvxpy as cp
 import numpy as np
 from panav.environment.utils import trajectory_to_tube_obstacles, box_2d_center, wp_to_tube_obstacle,trajectory_to_temp_obstacles
-from panav.util import unique_tx
+from panav.util import unique_tx, count_interger_var
 from panav.conflict import plan_obs_conflict
 class SAMP_Base:
     '''
@@ -40,9 +40,12 @@ class SAMP_Base:
         m = sum([len(o[0])-1 for o in obstacle_trajectories])
 
         i = 0
+        K_min = 1
         while i<=m:
-            # print("num obstacle trajectories:{}/{}".format(len(active),m))
-            p = self.plan_plain(active_obstacles=active_obs)
+            print("num obstacle trajectories:{}/{}".format(len(active_obs),m))
+            p = self.plan_plain(active_obstacles=active_obs,K_min=K_min)
+            K_min = len(p[0])-1
+            print("K_min",K_min)
             if p is None:
                 print('Problem becomes infeasible.')
                 break
@@ -80,7 +83,8 @@ class Simple_MILP_Planning(SAMP_Base):
         super().__init__(env, start, goal, bloating_r)
         self.vmax = vmax
         self.d = d
-        self.K = self.K_max = K_max
+        self.K = 1
+        self.K_max = K_max
         self.t0 = t0
         self.T_end_constraints = T_end_constraints
         self.ignore_finished_agents = ignore_finished_agents
@@ -89,21 +93,22 @@ class Simple_MILP_Planning(SAMP_Base):
     def plan(self,active_obstacles=[],obstacle_trajectories=[]):
         return self.plan_plain(active_obstacles,obstacle_trajectories)
 
-    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K = "auto"):
+    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K_min = 1):
         
-        if K == "auto":
-            for K in range(1,self.K_max+1):
-                self.K = K
-                p = self.plan_core(active_obstacles,obstacle_trajectories)
-                # print(K,p)
-                if p: return p
-        else:
-            assert(type(K) == int)
-            self.K = K
+        self.K = K_min
+        while self.K<=self.K_max:
             p = self.plan_core(active_obstacles,obstacle_trajectories)
-            self.K = self.K_max
-            return p
-  
+            # print(K,p)
+            if p:
+                self.K = 1 # Reset self.K 
+                return p
+            else: 
+                self.K+=1
+
+        # Solution not found even after exhausting all possible K.
+        self.K = 1 # Reset self.K
+        return None 
+        
     def plan_core(self,active_obstacles=[],obstacle_trajectories=[],solve_inplace = True):
         '''
          active_obstacles: a list of tuples in the format ([lb,ub], O). 
@@ -264,19 +269,21 @@ class Tube_Planning(SAMP_Base):
         self.goal_reach_eps = goal_reach_eps if goal_reach_eps else bloating_r
 
 
-    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K = "auto"):
-        
-        if K == "auto":
-            for K in range(1,self.K_max+1):
-                self.K = K
+    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K_min = 1):
+            
+            self.K = K_min
+            while self.K<=self.K_max:
                 p = self.plan_core(active_obstacles,obstacle_trajectories)
-                if p: return p
-        else:
-            assert(type(K) == int)
-            self.K = K
-            p = self.plan_core(active_obstacles,obstacle_trajectories)
-            self.K = self.K_max
-            return p
+                # print(K,p)
+                if p:
+                    self.K = 1 # Reset self.K 
+                    return p
+                else: 
+                    self.K+=1
+
+            # Solution not found even after exhausting all possible K.
+            self.K = 1 # Reset self.K
+            return None 
     
     def plan_core(self,active_obstacles=[],obstacle_trajectories=[],solve_inplace = True):
         '''
@@ -431,8 +438,8 @@ class Path_Tracking(Tube_Planning):
         self.milestones = milestones
         self.max_dev = max_dev
     
-    def plan_plain(self, active_obstacles=[], obstacle_trajectories=[], K="auto"):
-        return super().plan_plain(active_obstacles, obstacle_trajectories, K)
+    def plan_plain(self, active_obstacles=[], obstacle_trajectories=[], K_min=1):
+        return super().plan_plain(active_obstacles, obstacle_trajectories, K_min)
 
     def plan_core(self, active_obstacles=[], obstacle_trajectories=[], solve_inplace=True):
         '''
@@ -462,7 +469,7 @@ class Path_Tracking(Tube_Planning):
         if not solve_inplace:
             return t,x,constraints,prob
         else:
-            # print('number of integer constraints:',count_interger_var(prob))
+            print('number of integer constraints:',count_interger_var(prob))
             prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
             if t.value is not None:
                 out = unique_tx(t.value[0,:],x.value)
