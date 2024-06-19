@@ -14,7 +14,7 @@ class ORCA_Agent:
        
         self.protocol = protocol
         
-        self.p = init_p
+        self.p = np.array(init_p)
 
         if init_v is None:
             init_v = np.zeros(self.p.shape)
@@ -67,8 +67,8 @@ class ORCA_Agent:
             u = vo.u(v_rel)
 
             if zone_code == 2:
-                # n = -u/np.linalg.norm(u)
-                n = np.zeros(u.shape)
+                n = -u/np.linalg.norm(u)
+                # n = np.zeros(u.shape)
                 # continue # The agent is not in conflict with neighboring agent b.
             else:
                 n = u/np.linalg.norm(u)
@@ -94,6 +94,8 @@ class ORCA_Agent:
                       for d in obstacle_d]):
             return v
         
+
+        ######## Safe velocity calculation using Gurobi
         v = cp.Variable(self.v.shape) 
         
         constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
@@ -108,6 +110,30 @@ class ORCA_Agent:
         
         prob.solve()
         v_out = v.value
+        ########
+
+        ############ Safe velocity calculation using grid sampling
+        # def grid_solve_v(v_pref,n_grid=10):
+        #     candx,candy = np.meshgrid(np.linspace(-self.vmax,self.vmax,n_grid),
+        #                         np.linspace(-self.vmax,self.vmax,n_grid))
+
+        #     cand =[]
+        #     candx = candx.flatten()
+        #     candy = candy.flatten()
+        #     for vx,vy in zip(candx,candy):
+        #         v = np.array([vx,vy])
+        #         constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
+
+        #         constraints+=[d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
+        #                     for d in obstacle_d]
+                
+        #         constraints.append(la.norm(v)<= self.vmax)
+        #         if np.all(constraints):
+        #             cand.append(v)
+            
+        #     return cand[np.argmin([la.norm(v-v_pref) for v in cand])]
+        # v_out = grid_solve_v(v_pref)
+        #############
 
         if v_out is None: # The case where the problem is infeasible.
             # print('infeasible') 
@@ -121,10 +147,13 @@ class ORCA_Agent:
                                     [np.sin(-theta),np.cos(-theta)]]).dot(v_pref)
 
                 prob = cp.Problem(cp.Minimize(cp.norm(v-v_right)),constraints)
-            
                 prob.solve()
-                if np.linalg.norm(v.value)>self.vmin:
-                    v_out = v.value 
+                v_out = v.value
+                
+                # v_out = grid_solve_v(v_right)
+                # if np.linalg.norm(v.value)>self.vmin:
+                if la.norm(v_out)>self.vmin:
+                    # v_out = v.value 
                     break
 
         return v_out
@@ -281,24 +310,27 @@ class VO:
                     # prob.solve()
                     # proj1 = proj1.value
                     
-                  
+                    c = (test_pt-self.center).dot(-self.center)/(la.norm(test_pt-self.center)*la.norm(self.center))
+                    if c>=np.cos(np.pi/2-self.phi):
+                        proj = self.center+\
+                            (test_pt-self.center)/la.norm(test_pt-self.center) * self.r
+                    else:
+                        side_thetas = [self.center_theta-self.phi, 
+                                    self.center_theta+self.phi]
+                        sides = np.vstack([np.cos(side_thetas),np.sin(side_thetas)])
 
-                    side_thetas = [self.center_theta-self.phi, 
-                                   self.center_theta+self.phi]
-                    sides = np.vstack([np.cos(side_thetas),np.sin(side_thetas)])
+                        l = sides.T.dot(test_pt)
 
-                    proj = sides.T.dot(test_pt) * sides # proj = [proj_1(a column vector), proj 2(a column vector)]
+                        proj =  sides[:,l>=0]* l[l>=0] # The projection must be on the same direction as the boundary ray
 
-                    dist_2_proj = la.norm((proj.T - test_pt).T,axis = 0)
 
-                    proj1 = proj[:,np.argmin(dist_2_proj)]
+                        dist_2_proj = la.norm((proj.T - test_pt).T,axis = 0)
 
-                    proj2 = self.center+\
-                        (test_pt-self.center)/la.norm(test_pt-self.center) * self.r
+                        proj = proj[:,np.argmin(dist_2_proj)]
                     
-                    dists = [la.norm(test_pt-proj1),la.norm(test_pt-proj2)]
+                    # dists = [la.norm(test_pt-proj1),la.norm(test_pt-proj2)]
                     
-                    proj = [proj1,proj2][np.argmin(dists)]
+                    # proj = [proj1,proj2][np.argmin(dists)]
                     u = proj - test_pt
 
                     # u = np.zeros(self.center.shape)

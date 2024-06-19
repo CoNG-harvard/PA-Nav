@@ -58,3 +58,14 @@ class Box2DRegion(Region):
         self.A, self.b = self.poly.A, self.poly.b
         self.verts = shapely.geometry.box(self.xlim[0],self.ylim[0],
                                     self.xlim[1],self.ylim[1])
+    
+    def project(self,x):
+        xnew = np.array(x)
+        
+        xnew[0] = max(self.xlim[0],xnew[0])
+        xnew[0] = min(self.xlim[1],xnew[0])
+        
+        xnew[1] = max(self.ylim[0],xnew[1])
+        xnew[1] = min(self.ylim[1],xnew[1])
+        
+        return xnew
