@@ -67,10 +67,10 @@ class ORCA_Agent:
             u = vo.u(v_rel)
 
             if zone_code == 2:
-                n = -u/np.linalg.norm(u)
+                # n = -u/np.linalg.norm(u)
+                n = np.zeros(u.shape)
                 # continue # The agent is not in conflict with neighboring agent b.
             else:
-                
                 n = u/np.linalg.norm(u)
 
             us.append(u)
@@ -133,8 +133,8 @@ class ORCA_Agent:
 class VO:
     '''
         The velocity obstacle of agent a induced by agent b.
-        See notebooks/Velocity Obstacle.ipynb for a visual documentation of VO.
-        See notebooks/Calculate u.ipynb for a visual documentation of the calculation of u vector. 
+        See notebooks/ORCA/Velocity Obstacle.ipynb for a visual documentation of VO.
+        See notebooks/ORCA/Calculate u.ipynb for a visual documentation of the calculation of u vector. 
     '''
     def __init__(self,pa,pb,ra,rb,tau):
         '''
@@ -265,29 +265,43 @@ class VO:
                 print('Closely hit')
             else:
                 if zone == 2: # Relative velocity not in VO.
-                    l = la.norm(self.center)*np.cos(self.phi)
-                    thetas = [self.center_theta + self.phi,
-                              self.center_theta - self.phi]
-                    p1,p2 = [l * np.array([np.cos(theta),np.sin(theta)])
-                             for theta in thetas]
+                    # l = la.norm(self.center)*np.cos(self.phi)
+                    # thetas = [self.center_theta + self.phi,
+                    #           self.center_theta - self.phi]
+                    # p1,p2 = [l * np.array([np.cos(theta),np.sin(theta)])
+                    #          for theta in thetas]
                     
-                    proj1 = cp.Variable(p1.shape)
-                    constraints = [
-                        (proj1 - p1) @ (self.center-p1)>=0,
-                        (proj1 - p2) @ (self.center-p2)>=0,
-                        (proj1 - (p1+p2)/2) @ (p1+p2)>=0
-                    ]
-                    prob = cp.Problem(cp.Minimize(cp.norm(proj1 - test_pt)),constraints)
-                    prob.solve()
-                    proj1 = proj1.value
+                    # proj1 = cp.Variable(p1.shape)
+                    # constraints = [
+                    #     (proj1 - p1) @ (self.center-p1)>=0,
+                    #     (proj1 - p2) @ (self.center-p2)>=0,
+                    #     (proj1 - (p1+p2)/2) @ (p1+p2)>=0
+                    # ]
+                    # prob = cp.Problem(cp.Minimize(cp.norm(proj1 - test_pt)),constraints)
+                    # prob.solve()
+                    # proj1 = proj1.value
                     
+                  
+
+                    side_thetas = [self.center_theta-self.phi, 
+                                   self.center_theta+self.phi]
+                    sides = np.vstack([np.cos(side_thetas),np.sin(side_thetas)])
+
+                    proj = sides.T.dot(test_pt) * sides # proj = [proj_1(a column vector), proj 2(a column vector)]
+
+                    dist_2_proj = la.norm((proj.T - test_pt).T,axis = 0)
+
+                    proj1 = proj[:,np.argmin(dist_2_proj)]
+
                     proj2 = self.center+\
-                            (test_pt-self.center)/la.norm(test_pt-self.center) * self.r
+                        (test_pt-self.center)/la.norm(test_pt-self.center) * self.r
                     
                     dists = [la.norm(test_pt-proj1),la.norm(test_pt-proj2)]
                     
                     proj = [proj1,proj2][np.argmin(dists)]
                     u = proj - test_pt
+
+                    # u = np.zeros(self.center.shape)
                 elif zone == 1:
                     side_thetas = [self.center_theta-self.phi, 
                                    self.center_theta+self.phi]
