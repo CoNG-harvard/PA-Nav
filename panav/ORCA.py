@@ -58,23 +58,24 @@ class ORCA_Agent:
         '''
         us,ns = [],[]
         for b in neigbor_agents: 
-            vo = VO(self.p,b.p,
-                    self.bloating_r,b.bloating_r,self.tau)
-            
-            v_rel = self.v_opt-b.v_opt
-            
-            zone_code = vo.zones(v_rel)
-            u = vo.u(v_rel)
+            if la.norm(self.p-b.p)<=self.vmax*self.tau+self.bloating_r*2:
+                vo = VO(self.p,b.p,
+                        self.bloating_r,b.bloating_r,self.tau)
+                
+                v_rel = self.v_opt-b.v_opt
+                
+                zone_code = vo.zones(v_rel)
+                u = vo.u(v_rel)
 
-            if zone_code == 2:
-                n = -u/np.linalg.norm(u)
-                # n = np.zeros(u.shape)
-                # continue # The agent is not in conflict with neighboring agent b.
-            else:
-                n = u/np.linalg.norm(u)
+                if zone_code == 2:
+                    n = -u/np.linalg.norm(u)
+                    # n = np.zeros(u.shape)
+                    # continue # The agent is not in conflict with neighboring agent b.
+                else:
+                    n = u/np.linalg.norm(u)
 
-            us.append(u)
-            ns.append(n)
+                us.append(u)
+                ns.append(n)
         return us, ns
 
     def safe_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule = True):
@@ -84,7 +85,10 @@ class ORCA_Agent:
         # Constraints induced by static obstacles
         obstacle_d = [] 
         for O in obstacles: 
-            obstacle_d.append(O.project(self.p) - self.p)
+            to_obs = O.project(self.p) - self.p
+
+            if la.norm(to_obs)<=self.vmax*self.tau+1.5*self.bloating_r:
+                obstacle_d.append(to_obs)
 
         v = v_pref 
 
@@ -149,7 +153,7 @@ class ORCA_Agent:
                 prob = cp.Problem(cp.Minimize(cp.norm(v-v_right)),constraints)
                 prob.solve()
                 v_out = v.value
-                
+
                 # v_out = grid_solve_v(v_right)
                 # if np.linalg.norm(v.value)>self.vmin:
                 if la.norm(v_out)>self.vmin:
