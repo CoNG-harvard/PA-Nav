@@ -58,7 +58,7 @@ class ORCA_Agent:
         '''
         us,ns = [],[]
         for b in neigbor_agents: 
-            if la.norm(self.p-b.p)<=self.vmax*self.tau+self.bloating_r*2:
+            if la.norm(self.p-b.p)<=self.vmax*self.tau+self.bloating_r*2: # Only consider those agents that are close enought to the ego agent.
                 vo = VO(self.p,b.p,
                         self.bloating_r,b.bloating_r,self.tau)
                 
@@ -87,7 +87,7 @@ class ORCA_Agent:
         for O in obstacles: 
             to_obs = O.project(self.p) - self.p
 
-            if la.norm(to_obs)<=self.vmax*self.tau+1.5*self.bloating_r:
+            if la.norm(to_obs)<=self.vmax*self.tau+1.5*self.bloating_r: # Only consider those static obstacles that are close enough to the ego agent.
                 obstacle_d.append(to_obs)
 
         v = v_pref 
@@ -95,7 +95,7 @@ class ORCA_Agent:
 
         if np.all([(v-(self.v_opt+u/2)).dot(n) >= 0 for u,n in zip(us,ns)])\
             and np.all([d.dot(v*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
-                      for d in obstacle_d]):
+                      for d in obstacle_d]): # v_pref is already a feasible velocity.
             return v
         
 
@@ -104,7 +104,7 @@ class ORCA_Agent:
         
         constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
 
-        constraints+=[d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
+        constraints += [d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
                       for d in obstacle_d]
 
         # Maximum speed constraint
@@ -161,7 +161,85 @@ class ORCA_Agent:
                     break
 
         return v_out
+
+class Ordered_Agent(ORCA_Agent):
+    '''
+        The Ordered_Agent overrides the safe_v() method, to avoid higher_ranked_agents, assuming they will not avoid the ego agent.
+
+        Specifically, the hyperplane is not offset by u/2 as in ORCA_Agent, but by u instead.
+
+        Also, in the ordered agent, we don't implement the right-hand-rule since there won't be the issue of deadlock.
+
+        We also don't have the distinction between v and v_opt. v_opt will be v exactly.
+    '''
+    def __init__(self, protocol, tau, bloating_r, vmax, init_p, init_v=None, vmin=None):
+        super().__init__(protocol, tau, bloating_r, vmax, init_p, init_v, vmin)
+
+    
+    def update_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule=True):
+        self.v_opt = v_pref
+        self.v = self.safe_v(v_pref,obstacles,neigbor_agents,
+                                right_hand_rule=right_hand_rule)
+        self.v_opt = self.v
+    
+    def safe_v(self, v_pref, obstacles, higher_ranked_agents, right_hand_rule=True):
+        us,ns = self.neighbor_constraints(higher_ranked_agents)
+        # Constraints induced by static obstacles
+        obstacle_d = [] 
+        for O in obstacles: 
+            to_obs = O.project(self.p) - self.p
+
+            if la.norm(to_obs)<=self.vmax*self.tau+1.5*self.bloating_r: # Only consider those static obstacles that are close enough to the ego agent.
+                obstacle_d.append(to_obs)
+
+        v = v_pref 
+
+
+        if np.all([(v-(self.v_opt+u)).dot(n) >= 0 for u,n in zip(us,ns)])\
+            and np.all([d.dot(v*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
+                      for d in obstacle_d]): # v_pref is already a feasible velocity.
+            return v
         
+
+        ######## Safe velocity calculation using Gurobi
+        v = cp.Variable(self.v.shape) 
+        
+        constraints = [(v-(self.v_opt+u)) @ n >= 0 for u,n in zip(us,ns)]
+
+        constraints += [d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
+                      for d in obstacle_d]
+
+        # Maximum speed constraint
+        constraints.append(cp.norm(v)<= self.vmax)
+
+        prob = cp.Problem(cp.Minimize(cp.norm(v-v_pref)),constraints)
+        
+        prob.solve()
+        v_out = v.value
+        ########
+
+        if v_out is None: # The case where the problem is infeasible.
+            print('infeasible') 
+            v_out = np.zeros(v_pref.shape) # Temporary solution. To be extended next.
+        elif np.linalg.norm(v_out)<=self.vmin and right_hand_rule:
+            print('Potential deadlock')
+            # Potential deadlock, engage the right-hand rule
+            for theta in np.pi * np.array([1/2,1]):
+                # Rotate v_pref clockwise by theta.
+                v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
+                                    [np.sin(-theta),np.cos(-theta)]]).dot(v_pref)
+
+                prob = cp.Problem(cp.Minimize(cp.norm(v-v_right)),constraints)
+                prob.solve()
+                v_out = v.value
+
+                # v_out = grid_solve_v(v_right)
+                # if np.linalg.norm(v.value)>self.vmin:
+                if la.norm(v_out)>self.vmin:
+                    # v_out = v.value 
+                    break
+
+        return v_out
 
 class VO:
     '''
