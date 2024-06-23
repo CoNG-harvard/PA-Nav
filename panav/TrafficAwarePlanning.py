@@ -46,7 +46,13 @@ def traffic_aware_HG_plan(HG,consider_soft_traffic=False):
     ## One-by-one cost aware planning
     HG.__reset_traffic__()
     paths = []
-    for s,g in zip(HG.start_nodes,HG.goal_nodes):
+
+    N  = len(HG.start_nodes)
+    
+    agents = np.arange(N)
+
+    for a in agents:
+        s,g = HG.start_nodes[a],HG.goal_nodes[a]
         
         # print(s,g)
         path = nx.shortest_path(HG,s,g,weight = "traffic_cost")
