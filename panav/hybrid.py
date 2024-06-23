@@ -76,7 +76,7 @@ class HybridGraph(nx.DiGraph):
                                                   # This is also known as the contra-flow cost
                 self.edges[k,q]['traffic_cost'] = (1+self.edges[q,k]['flow']
                                                 * (self.edges[k,q]['flow']+1))\
-                                                * self.edges[k,q]['weight']
+                                                * self.edges[k,q]['weight'] 
                 
             elif update_soft: 
                 # Update soft edge if the input specifies they should be updated.
@@ -166,7 +166,6 @@ class HybridGraph(nx.DiGraph):
 
                 if not through_some_tunnel: # u-v does not pass through any tunnel.
                     G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
-                    # G_soft.add_edge(u,v,type='soft', weight = np.max(t))
                     
         open_spaces_nodes = [c for c in nx.connected_components(nx.to_undirected(G_soft))]
         

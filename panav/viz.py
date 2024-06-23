@@ -169,6 +169,7 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_p
             if t<paths[a].shape[-1]:
                 disc.center = paths[a][0,t],paths[a][1,t]
                 txt.set_position((paths[a][0,t],paths[a][1,t]))
+        ax.set_title("Time step {}".format(t))
         return agent_discs+agent_ID_text
 
     handles, labels = ax.get_legend_handles_labels()

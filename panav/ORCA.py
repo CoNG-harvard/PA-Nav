@@ -58,7 +58,7 @@ class ORCA_Agent:
         '''
         us,ns = [],[]
         for b in neigbor_agents: 
-            if la.norm(self.p-b.p)<=self.vmax*self.tau+self.bloating_r*2: # Only consider those agents that are close enought to the ego agent.
+            if la.norm(self.p-b.p)<=(b.vmax+self.vmax)*self.tau+self.bloating_r+b.bloating_r: # Only consider those agents that are close enough to the ego agent.
                 vo = VO(self.p,b.p,
                         self.bloating_r,b.bloating_r,self.tau)
                 
@@ -100,7 +100,7 @@ class ORCA_Agent:
         
 
         ######## Safe velocity calculation using Gurobi
-        v = cp.Variable(self.v.shape) 
+        v = cp.Variable(v_pref.shape) 
         
         constraints = [(v-(self.v_opt+u/2)) @ n >= 0 for u,n in zip(us,ns)]
 
@@ -202,7 +202,7 @@ class Ordered_Agent(ORCA_Agent):
         
 
         ######## Safe velocity calculation using Gurobi
-        v = cp.Variable(self.v.shape) 
+        v = cp.Variable(v_pref.shape) 
         
         constraints = [(v-(self.v_opt+u)) @ n >= 0 for u,n in zip(us,ns)]
 
@@ -220,24 +220,8 @@ class Ordered_Agent(ORCA_Agent):
 
         if v_out is None: # The case where the problem is infeasible.
             print('infeasible') 
-            v_out = np.zeros(v_pref.shape) # Temporary solution. To be extended next.
-        elif np.linalg.norm(v_out)<=self.vmin and right_hand_rule:
-            print('Potential deadlock')
-            # Potential deadlock, engage the right-hand rule
-            for theta in np.pi * np.array([1/2,1]):
-                # Rotate v_pref clockwise by theta.
-                v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
-                                    [np.sin(-theta),np.cos(-theta)]]).dot(v_pref)
+            v_out = None # Temporary solution. To be extended next.
 
-                prob = cp.Problem(cp.Minimize(cp.norm(v-v_right)),constraints)
-                prob.solve()
-                v_out = v.value
-
-                # v_out = grid_solve_v(v_right)
-                # if np.linalg.norm(v.value)>self.vmin:
-                if la.norm(v_out)>self.vmin:
-                    # v_out = v.value 
-                    break
 
         return v_out
 
