@@ -58,30 +58,42 @@ class ORCA_Agent:
         '''
         us,ns = [],[]
         for b in neigbor_agents: 
-            if la.norm(self.p-b.p)<=(b.vmax+self.vmax)*self.tau+self.bloating_r+b.bloating_r: # Only consider those agents that are close enough to the ego agent.
-                vo = VO(self.p,b.p,
-                        self.bloating_r,b.bloating_r,self.tau)
-                
-                v_rel = self.v_opt-b.v_opt
-                
-                zone_code = vo.zones(v_rel)
-                u = vo.u(v_rel)
+            # if la.norm(self.p-b.p)<=(b.vmax+self.vmax)*self.tau+(self.bloating_r+b.bloating_r): # Only consider those agents that are close enough to the ego agent.
+            vo = VO(self.p,b.p,
+                    self.bloating_r,b.bloating_r,self.tau)
 
-                if zone_code == 2:
-                    n = -u/np.linalg.norm(u)
-                    # n = np.zeros(u.shape)
-                    # continue # The agent is not in conflict with neighboring agent b.
-                else:
-                    n = u/np.linalg.norm(u)
+            
+            v_rel = self.v_opt-b.v_opt
+            
+            zone_code = vo.zones(v_rel)
 
-                us.append(u)
-                ns.append(n)
+            u = vo.u(v_rel)
+
+
+            # print("neighbor agent v_opt",b.v_opt,'zone',zone_code)
+
+            if zone_code == 2:
+                n = -u/np.linalg.norm(u)
+                # n = np.zeros(u.shape)
+                # continue # The agent is not in conflict with neighboring agent b.
+            else:
+                n = u/np.linalg.norm(u)
+
+            us.append(u)
+            ns.append(n)
         return us, ns
 
     def safe_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule = True):
         
+        print(v_pref)
         # Constraints induced by other agents.
-        us,ns = self.neighbor_constraints(neigbor_agents)
+        vecs = self.neighbor_constraints(neigbor_agents)
+        if vecs is None:
+            return None # This case corresponds to the meteorite crash: no escape from one of the neighboring agents.
+        
+        us,ns = vecs
+
+        
         # Constraints induced by static obstacles
         obstacle_d = [] 
         for O in obstacles: 
@@ -143,7 +155,7 @@ class ORCA_Agent:
             # print('infeasible') 
             v_out = np.zeros(v_pref.shape) # Temporary solution. To be extended next.
         elif np.linalg.norm(v_out)<=self.vmin and right_hand_rule:
-            # print('Potential deadlock')
+            print('Potential deadlock')
             # Potential deadlock, engage the right-hand rule
             for theta in np.pi * np.array([1/2,1]):
                 # Rotate v_pref clockwise by theta.
@@ -183,7 +195,14 @@ class Ordered_Agent(ORCA_Agent):
         self.v_opt = self.v
     
     def safe_v(self, v_pref, obstacles, higher_ranked_agents, right_hand_rule=True):
-        us,ns = self.neighbor_constraints(higher_ranked_agents)
+               
+        # Constraints induced by other agents.
+        vecs = self.neighbor_constraints(higher_ranked_agents)
+        if vecs is None:
+            return None # This case corresponds to the meteorite crash: no escape from one of the neighboring agents.
+        
+        us,ns = vecs
+
         # Constraints induced by static obstacles
         obstacle_d = [] 
         for O in obstacles: 
@@ -244,7 +263,7 @@ class VO:
         self.r = (ra+rb)/tau
         self.center_theta = np.arctan2(self.center[1],self.center[0])
         
-        if la.norm(self.center)>0 and self.r <= la.norm(self.center): # The two agents do not overlap
+        if la.norm(self.center)>0 and self.r*0.999 <= la.norm(self.center): # The two agents do not overlap
             self.phi = np.arcsin(self.r/la.norm(self.center))
         
     def visualize(self, ax):
