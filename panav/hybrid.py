@@ -3,6 +3,7 @@ from itertools import product
 from functools import partial
 
 from panav.SAMP.archaic import Tube_Planning
+# from panav.SAMP.solvers import Tube_Planning
 from panav.tunnels import detect_tunnels, get_entry_exit
 from panav.util import unique_tx
 
@@ -10,7 +11,6 @@ import numpy as np
 
 class HybridGraph(nx.DiGraph):
     def __init__(self, env, agent_radius,d = 2,  # Path planning parameters are hard coded for now.
-                                        K = 3,
                                         vmax = 1.0) -> None:
         ''' 
             env: a panav.env.NavigationEnv object.
@@ -20,7 +20,6 @@ class HybridGraph(nx.DiGraph):
         
         self.vmax = vmax
         self.d = d
-        self.K = K
         self.agent_radius = agent_radius
 
         self.env = env
@@ -35,8 +34,9 @@ class HybridGraph(nx.DiGraph):
                                         bloating_r = agent_radius, 
                                         obs_trajectories=[], 
                                         d = d,  # Path planning parameters are hard coded for now.
-                                        K = K,
+                                        K = 3,
                                         vmax = vmax)
+        # self.continuous_path_planner = Tube_Planning(self.env,None,None,vmax=vmax,bloating_r=agent_radius,d=d,K_max = 10)
         
         self.tunnels = detect_tunnels(env,agent_radius)
         self.__construct_hybrid_graph__()
@@ -146,6 +146,9 @@ class HybridGraph(nx.DiGraph):
                 ## Determine if the shortest path between u, v passes through any tunnels
              
                 # Plan the shortest continuous path             
+                # self.continuous_path_planner.start = self.node_loc(u)
+                # self.continuous_path_planner.goal = self.node_loc(v)
+                # path = self.continuous_path_planner.plan()
                 path = self.continuous_path_planner(start = self.node_loc(u),goal = self.node_loc(v))
 
                 if path is None:

@@ -189,7 +189,8 @@ class Ordered_Agent(ORCA_Agent):
 
     
     def update_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule=True):
-        self.v_opt = v_pref
+        # self.v_opt = v_pref
+        self.v_opt = np.array([0,0])
         self.v = self.safe_v(v_pref,obstacles,neigbor_agents,
                                 right_hand_rule=right_hand_rule)
         self.v_opt = self.v
@@ -223,7 +224,7 @@ class Ordered_Agent(ORCA_Agent):
         ######## Safe velocity calculation using Gurobi
         v = cp.Variable(v_pref.shape) 
         
-        constraints = [(v-(self.v_opt+u)) @ n >= 0 for u,n in zip(us,ns)]
+        constraints = [(v-(self.v_opt+u)) @ n >= 0+1e-3 for u,n in zip(us,ns)]
 
         constraints += [d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
                       for d in obstacle_d]
@@ -238,8 +239,20 @@ class Ordered_Agent(ORCA_Agent):
         ########
 
         if v_out is None: # The case where the problem is infeasible.
-            print('infeasible') 
-            v_out = None # Temporary solution. To be extended next.
+            # print('Infeasible')
+            # print('infeasible, using the most efficient escape') 
+            # loss = [-(v-(self.v_opt+u)) @ n for u,n in zip(us,ns)]
+            # loss += [d/np.linalg.norm(d) @ (v*self.tau) - (np.linalg.norm(d)-self.bloating_r)
+            #           for d in obstacle_d]
+
+            # # Maximum speed constraint
+            # constraints= [cp.norm(v)<= self.vmax]
+            # prob = cp.Problem(cp.Minimize(cp.sum(loss)),constraints)
+            # prob.solve()
+            # v_out = v.value # Temporary solution. To be extended next.
+            pass
+          
+                
 
 
         return v_out
