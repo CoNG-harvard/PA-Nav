@@ -85,7 +85,7 @@ class ORCA_Agent:
 
     def safe_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule = True):
         
-        print(v_pref)
+        # print(v_pref)
         # Constraints induced by other agents.
         vecs = self.neighbor_constraints(neigbor_agents)
         if vecs is None:
@@ -224,7 +224,7 @@ class Ordered_Agent(ORCA_Agent):
         ######## Safe velocity calculation using Gurobi
         v = cp.Variable(v_pref.shape) 
         
-        constraints = [(v-(self.v_opt+u)) @ n >= 0+1e-3 for u,n in zip(us,ns)]
+        constraints = [(v-(self.v_opt+u)) @ n >= 0+0.1 for u,n in zip(us,ns)]
 
         constraints += [d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
                       for d in obstacle_d]
