@@ -23,10 +23,10 @@ class DefaultEmtpyEnv(NavigationEnv):
     def __init__(self, limits=[(-10.0,10.0),(-10.0,10.0)], N_agent = 6):
        
 
-        top, bottom = limits[1][1]*0.8,limits[1][0]*0.8
+        top, bottom = limits[1][1]-2.0,limits[1][0]+2.0
 
-        start_x_offset = abs(limits[0][0]) * 0.7
-        goal_x_offset = start_x_offset + 2.0
+        start_x_offset = abs(limits[0][0]) * 0.6
+        goal_x_offset = start_x_offset + 4.0
 
         if N_agent % 2 == 0:
             N1 = N2 = N_agent // 2

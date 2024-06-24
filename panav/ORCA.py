@@ -31,6 +31,8 @@ class ORCA_Agent:
             self.vmin = 0.01 * vmax
 
         self.resolving_deadlock = False
+
+        self.goal_reached = False
     
     def update_v_opt(self,v_pref):
         self.v_opt = self.calc_v_opt(v_pref)
@@ -232,7 +234,7 @@ class Ordered_Agent(ORCA_Agent):
         # Maximum speed constraint
         constraints.append(cp.norm(v)<= self.vmax)
 
-        prob = cp.Problem(cp.Minimize(cp.norm(v-v_pref)),constraints)
+        prob = cp.Problem(cp.Minimize(cp.norm(v-v_pref)**2-beta*cp.sum(dist2neighbor)),constraints)
         
         prob.solve()
         v_out = v.value
