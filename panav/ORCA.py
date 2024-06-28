@@ -6,9 +6,10 @@ import cvxpy as cp
 class ORCA_Agent:
     def __init__(self,protocol,tau,
                 bloating_r,vmax,
-                 init_p,init_v=None,vmin = None):
+                 init_p,init_v=None,vmin = None,id=-1):
         
         valid = {0, 1, 2}
+
         if protocol not in valid:
             raise ValueError("results: protocol must be one of %r." % valid)
        
@@ -33,6 +34,8 @@ class ORCA_Agent:
         self.resolving_deadlock = False
 
         self.goal_reached = False
+        
+        self.id = id
     
     def update_v_opt(self,v_pref):
         self.v_opt = self.calc_v_opt(v_pref)
@@ -186,8 +189,8 @@ class Ordered_Agent(ORCA_Agent):
 
         We also don't have the distinction between v and v_opt. v_opt will be v exactly.
     '''
-    def __init__(self, protocol, tau, bloating_r, vmax, init_p, init_v=None, vmin=None):
-        super().__init__(protocol, tau, bloating_r, vmax, init_p, init_v, vmin)
+    def __init__(self, protocol, tau, bloating_r, vmax, init_p, init_v=None, vmin=None,id=-1):
+        super().__init__(protocol, tau, bloating_r, vmax, init_p, init_v, vmin,id)
 
     
     def update_v(self,v_pref,obstacles,neigbor_agents,right_hand_rule=True):
@@ -198,7 +201,7 @@ class Ordered_Agent(ORCA_Agent):
         self.v_opt = self.v
     
     def safe_v(self, v_pref, obstacles, higher_ranked_agents, right_hand_rule=True):
-               
+        # print('curr agent',self.id,'parent agents',[ag.id for ag in higher_ranked_agents])
         # Constraints induced by other agents.
         vecs = self.neighbor_constraints(higher_ranked_agents)
         if vecs is None:
@@ -216,43 +219,58 @@ class Ordered_Agent(ORCA_Agent):
 
         v = v_pref 
 
+        agent_clear = np.all([(v-(self.v_opt+u)).dot(n) >= 0 for u,n in zip(us,ns)])
+        obstacle_clear = np.all([d.dot(v*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
+                      for d in obstacle_d])
 
-        if np.all([(v-(self.v_opt+u)).dot(n) >= 0 for u,n in zip(us,ns)])\
-            and np.all([d.dot(v*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
-                      for d in obstacle_d]): # v_pref is already a feasible velocity.
+        if agent_clear and obstacle_clear: # v_pref is already a feasible velocity.
             return v
         
 
         ######## Safe velocity calculation using Gurobi
+
+
         v = cp.Variable(v_pref.shape) 
         
         constraints = [(v-(self.v_opt+u)) @ n >= 0+0.1 for u,n in zip(us,ns)]
 
-        constraints += [d/np.linalg.norm(d) @ (v*self.tau) <= (np.linalg.norm(d)-self.bloating_r)
+        constraints += [d/np.linalg.norm(d) @ (v*self.tau)+0.1 <= (np.linalg.norm(d)-self.bloating_r)
                       for d in obstacle_d]
 
         # Maximum speed constraint
         constraints.append(cp.norm(v)<= self.vmax)
 
-        prob = cp.Problem(cp.Minimize(cp.norm(v-v_pref)**2-beta*cp.sum(dist2neighbor)),constraints)
-        
-        prob.solve()
-        v_out = v.value
-        ########
-
-        if v_out is None: # The case where the problem is infeasible.
-            # print('Infeasible')
+        prob = cp.Problem(cp.Minimize(cp.norm(v-v_pref)**2),constraints)
+        try:
+            prob.solve(solver='GUROBI')
+           
+            v_out = v.value
+            # print('v_out',v_out)
+            if v_out is not None:
+                agent_clear = np.all([(v_out-(self.v_opt+u)).dot(n) >= 0.0 for u,n in zip(us,ns)])
+                obstacle_clear = np.all([d.dot(v_out*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
+                            for d in obstacle_d])
+                if not agent_clear or not obstacle_clear:
+                    print('Solver inaccuracy.','agent clear',agent_clear,'obstacle_clear',obstacle_clear)
+                    raise Exception
+                
+            if prob.status!='optimal':
+                print('Problem status:',prob.status,'Agent',self.id)
+                raise Exception
+            ########
+        except Exception:
+            print('Infeasible')
+            return None
             # print('infeasible, using the most efficient escape') 
             # loss = [-(v-(self.v_opt+u)) @ n for u,n in zip(us,ns)]
             # loss += [d/np.linalg.norm(d) @ (v*self.tau) - (np.linalg.norm(d)-self.bloating_r)
-            #           for d in obstacle_d]
+            #         for d in obstacle_d]
 
             # # Maximum speed constraint
             # constraints= [cp.norm(v)<= self.vmax]
             # prob = cp.Problem(cp.Minimize(cp.sum(loss)),constraints)
-            # prob.solve()
+            # prob.solve(solver='GUROBI')
             # v_out = v.value # Temporary solution. To be extended next.
-            pass
           
                 
 
