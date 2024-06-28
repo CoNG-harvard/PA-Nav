@@ -38,7 +38,7 @@ class SAMP_Base:
         i = 0
         K_min = 1
         while i<=m:
-            print("num obstacle trajectories:{}/{}".format(len(active_obs),m))
+            # print("num obstacle trajectories:{}/{}".format(len(active_obs),m))
             p = self.plan_plain(active_obstacles=active_obs,K_min=K_min)
            
             if p is None:
@@ -53,7 +53,7 @@ class SAMP_Base:
                 return p
             
             K_min = len(p[0])-1 # len(p[0])-1 is the latest K value.
-            print("K_min",K_min)
+            # print("K_min",K_min)
 
             active_obs+=conflicted_obs
         return None
@@ -455,7 +455,7 @@ class Path_Tracking(Tube_Planning):
         if not solve_inplace:
             return t,x,constraints,prob
         else:
-            print('number of integer constraints:',count_interger_var(prob))
+            # print('number of integer constraints:',count_interger_var(prob))
             prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
             if t.value is not None:
                 out = unique_tx(t.value[0,:],x.value)

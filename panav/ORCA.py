@@ -251,15 +251,15 @@ class Ordered_Agent(ORCA_Agent):
                 obstacle_clear = np.all([d.dot(v_out*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
                             for d in obstacle_d])
                 if not agent_clear or not obstacle_clear:
-                    print('Solver inaccuracy.','agent clear',agent_clear,'obstacle_clear',obstacle_clear)
+                    # print('Solver inaccuracy.','agent clear',agent_clear,'obstacle_clear',obstacle_clear)
                     raise Exception
                 
             if prob.status!='optimal':
-                print('Problem status:',prob.status,'Agent',self.id)
+                # print('Problem status:',prob.status,'Agent',self.id)
                 raise Exception
             ########
         except Exception:
-            print('Infeasible')
+            # print('Infeasible')
             return None
             # print('infeasible, using the most efficient escape') 
             # loss = [-(v-(self.v_opt+u)) @ n for u,n in zip(us,ns)]
