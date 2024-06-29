@@ -76,7 +76,7 @@ class HybridGraph(nx.DiGraph):
                                                   # This is also known as the contra-flow cost
                 a = 1
                 b = 0
-                c = 1
+                c = 10
                 self.edges[k,q]['traffic_cost'] = (1+\
                                                    a * self.edges[q,k]['flow'] * self.edges[k,q]['flow']+\
                                                    b * self.edges[k,q]['flow']+\

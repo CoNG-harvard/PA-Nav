@@ -184,4 +184,4 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
 
         if all_reached:
             break
-    return [(ts,xs) for ts,xs in zip(times,pos)]
+    return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
