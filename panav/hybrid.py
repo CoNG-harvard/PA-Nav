@@ -34,7 +34,7 @@ class HybridGraph(nx.DiGraph):
                                         bloating_r = agent_radius, 
                                         obs_trajectories=[], 
                                         d = d,  # Path planning parameters are hard coded for now.
-                                        K = 3,
+                                        K = 1,
                                         vmax = vmax)
         # self.continuous_path_planner = Tube_Planning(self.env,None,None,vmax=vmax,bloating_r=agent_radius,d=d,K_max = 10)
         
@@ -75,7 +75,7 @@ class HybridGraph(nx.DiGraph):
             if self.edges[k,q]['type']=='hard':
                                                   # This is also known as the contra-flow cost
                 a = 1
-                b = 0
+                b = 5
                 c = 10
                 self.edges[k,q]['traffic_cost'] = (1+\
                                                    a * self.edges[q,k]['flow'] * self.edges[k,q]['flow']+\

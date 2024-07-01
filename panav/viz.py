@@ -116,7 +116,7 @@ def draw_hybrid(HG,ax=None,paths = [],display_soft=False,display_node = True,sho
 
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
-def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_path_lines = True):
+def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_path_lines = True,displayAgentID = True):
     '''
         Animate multi-agent trajectories in the given env.
         

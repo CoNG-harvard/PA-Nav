@@ -8,6 +8,7 @@ def sequential_planning(solver,env,vmax,bloating_r,TIMEOUT = 120):
     continuous_plans = []
 
     for i in range(len(env.starts)):
+        print('Planning for agent {}/{}'.format(i,len(env.starts)))
         start = env.starts[i,:]
         goal = env.goals[i,:]
         

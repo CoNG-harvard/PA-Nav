@@ -47,6 +47,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
         if orcas[agent].state == 'tunnel_waiting':
                 curIdx = curr_wp_index[a]
                 w = paths[a][curIdx]
+                if curIdx == len(paths[a])-1:
+                    print('AGENT',agent)
                 v = paths[a][curIdx+1]
                 
                 pw,pv = HG.node_loc(w),HG.node_loc(v)
@@ -114,7 +116,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
     curr_t = 0
 
     for _ in range(400):
-        # print("################# Time step {} ################".format(_))
+        print("################# Time step {} ################".format(_))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)
@@ -132,13 +134,14 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
             else: 
                 v = None
 
-            # print('w,v',w,v)
+            if v is None and orcas[a].state == 'tunnel_waiting':
+                return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
 
 
             if v is not None and\
                 HG.edges[w,v]['type']=='hard' and\
                 la.norm(agent_loc-target_wp)<=entry_r and\
-                orcas[a].state != 'tunnel_entry':
+                orcas[a].state in ['tunnel_waiting','free']:
 
                 # if _ == 6 and a == 4:
                 # print('Occupants of (0,1)',HG.edges[0,1]['occupants'], 'Occupants of (1,0)',HG.edges[1,0]['occupants'], 'Occupants for 0', HG.nodes[0]['occupant'],'Occupants for 1',HG.nodes[1]['occupant'])
@@ -147,7 +150,11 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                         HG.edges[w,v]['occupants'].add(a)
                         HG.nodes[w]['occupant'] = a
                         orcas[a].state = 'tunnel_entry'
+
+                        print('agent',a,'entering tunnel',w,v)
                 else:
+
+                    print('agent',a,'waiting at tunnel',w,v)
                     orcas[a].state = 'tunnel_waiting'
             
 
@@ -157,6 +164,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                 else:
                     match orcas[a].state:
                         case 'tunnel_entry':
+
                             orcas[a].state = 'in_tunnel'
                             orcas[a].cur_edge = (w,v)
                             HG.nodes[w]['occupant'] = None # Release the entry node
@@ -165,7 +173,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                             orcas[a].state = 'free'
                             e = orcas[a].cur_edge
 
-                            # print('agent',a,'leaving tunnel',e)
+                            print('agent',a,'leaving tunnel',e)
                             HG.edges[e]['occupants'].remove(a)
                             orcas[a].cur_edge = None
                     
