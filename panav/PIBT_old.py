@@ -1,5 +1,4 @@
 import numpy as np
-import numpy.linalg as la
 
 from panav.TrafficAwarePlanning import traffic_aware_HG_plan
 from panav.ORCA import Ordered_Agent
@@ -10,7 +9,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
     start_T = time()
 
     paths = traffic_aware_HG_plan(HG)
-    print(paths)
     ref_plan = [np.array([HG.node_loc(u) for u in path]).T for path in paths]
     plans = ref_plan
 
@@ -36,27 +34,55 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
     # We will assume agent i is ranked i among the agents when dealing with conflicts.
     curr_wp_index = [1 for a in agents]
 
-    entry_r = 6 * bloating_r
+    entry_r = 4 * bloating_r
+    occupant = [None for s in HG.nodes]
 
+    def towards(cur_loc, wp):
+        to_wp = wp-cur_loc
+        return to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)
 
     def calc_pref(agent):
         
         target_wp = plans[agent][:,curr_wp_index[agent]]
+        prev_node = paths[agent][curr_wp_index[agent]-1]
+        next_node = paths[agent][curr_wp_index[agent]]
+
         agent_loc = orcas[agent].p
 
-        if orcas[agent].state == 'tunnel_waiting':
-                curIdx = curr_wp_index[a]
-                w = paths[a][curIdx]
-                v = paths[a][curIdx+1]
-                
-                pw,pv = HG.node_loc(w),HG.node_loc(v)
-                wait_loc = pw + 0.8 * entry_r * (pw-pv)/la.norm(pw-pv+1e-5)
+        def is_entry(prev_node,next_node):
+            return HG.nodes[prev_node]['type']!='tunnel' and HG.nodes[next_node]['type']=='tunnel'
 
-                # wait_loc = agent_loc + (np.random.rand(2)-0.5)*0# Temporary solution: prefer to stay at the current location when waiting.
-                v_prefs[agent] = towards(agent_loc,wait_loc,tau,vmax)
-                # print('agent', agent,'tunnel waiting v_pref',v_prefs[agent])
+
+        if not consider_entry or not is_entry(prev_node,next_node):
+            # Not a tunnel entry
+            v_prefs[agent] = towards(agent_loc,target_wp) 
         else:
-            v_prefs[agent] = towards(agent_loc,target_wp,tau,vmax) # If not waiting, then head towards the target waypoint.            
+            # Tunnel entry
+            if np.linalg.norm(agent_loc-target_wp)<=entry_r:
+                if occupant[next_node] is not None and occupant[next_node]!=agent:
+                    # Defer to the current occupant
+                    temp_loc = agent_loc # Go to the waiting position.
+                    v_prefs[agent] = towards(agent_loc,temp_loc)
+                else:
+                    # Claim the target node
+                    occupant[next_node] = agent 
+                    v_prefs[agent] = towards(agent_loc,target_wp) 
+            else:
+                v_prefs[agent] = towards(agent_loc,target_wp) 
+
+        
+        # See if the agent has reached the current waypoint.
+        if np.linalg.norm(agent_loc-target_wp)<= bloating_r:  
+            if consider_entry and is_entry(prev_node,next_node):
+                # Release the target node
+                if occupant[next_node] == agent:
+                    occupant[next_node] = None
+
+            curr_wp_index[agent] += 1 
+            curr_wp_index[agent] = min([curr_wp_index[agent],
+                                        plans[agent].shape[1]-1])
+            
+            
 
     def PIBT(a):
         if time()-start_T>TIMEOUT:
@@ -79,7 +105,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
             
         candidate_v_pref = [] 
 
-
         for theta in np.pi * np.linspace(0,2,4)[:-1]:
                 # Rotate v_pref clockwise by theta.
                 v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
@@ -89,7 +114,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
         candidate_v_pref.append(np.array([0,0])) # Always have zero velocity as a candidate
         
         for v_pref in candidate_v_pref:
-            # print('agent',a,'v_pref',v_pref)
             orcas[a].update_v(v_pref,HG.env.obstacles,[orcas[b] for b in P]) 
             if orcas[a].v is None:
                 return False
@@ -114,63 +138,12 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
     curr_t = 0
 
     for _ in range(400):
-        print("################# Time step {} ################".format(_))
+        # print("################# Time step {} ################".format(_))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)
 
-        # Check for waypoint reaching and tunnel occupancy
-        for a in agents:
-            # print('agent',a,'state',orcas[a].state)
-            curIdx = curr_wp_index[a]
-            agent_loc = orcas[a].p
-            target_wp = plans[a][:,curIdx]
-
-            w = paths[a][curIdx]
-            if curIdx < plans[a].shape[1]-1: 
-                v = paths[a][curIdx+1]
-            else: 
-                v = None
-
-            # print('w,v',w,v)
-
-
-            if v is not None and\
-                HG.edges[w,v]['type']=='hard' and\
-                la.norm(agent_loc-target_wp)<=entry_r and\
-                orcas[a].state != 'tunnel_entry':
-
-                # if _ == 6 and a == 4:
-                # print('Occupants of (0,1)',HG.edges[0,1]['occupants'], 'Occupants of (1,0)',HG.edges[1,0]['occupants'], 'Occupants for 0', HG.nodes[0]['occupant'],'Occupants for 1',HG.nodes[1]['occupant'])
-                            
-                if len(HG.edges[v,w]['occupants'])==0 and HG.nodes[w]['occupant'] == None: 
-                        HG.edges[w,v]['occupants'].add(a)
-                        HG.nodes[w]['occupant'] = a
-                        orcas[a].state = 'tunnel_entry'
-                else:
-                    orcas[a].state = 'tunnel_waiting'
-            
-
-            if la.norm(agent_loc-target_wp)<= bloating_r:  
-                if curIdx == plans[a].shape[1]-1:
-                    orcas[a].state = 'goal'
-                else:
-                    match orcas[a].state:
-                        case 'tunnel_entry':
-                            orcas[a].state = 'in_tunnel'
-                            orcas[a].cur_edge = (w,v)
-                            HG.nodes[w]['occupant'] = None # Release the entry node
-                            # HG.edges[w,v]['occupants'].add(a) # This line is actually redundant
-                        case 'in_tunnel':
-                            orcas[a].state = 'free'
-                            e = orcas[a].cur_edge
-
-                            # print('agent',a,'leaving tunnel',e)
-                            HG.edges[e]['occupants'].remove(a)
-                            orcas[a].cur_edge = None
-                    
-                    curr_wp_index[a] += 1 
-        
+        curr_t += exec_tau
         
         for a in agents:
             # Compute the preferred velocity.
@@ -201,7 +174,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
             dist2goal = np.linalg.norm(orcas[a].p - goal_locs[a])
     
             if dist2goal>=0.5*bloating_r:
-                # print('agent',a,'v',orcas[a].v)
                 orcas[a].p += orcas[a].v*exec_tau
                 all_reached = False
                 # Reset all agent's v to be None
@@ -209,14 +181,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
             else:
                 orcas[a].goal_reached = True
                 orcas[a].v = orcas[a].v_opt = np.array([0,0])
-        
-        curr_t += exec_tau
 
         if all_reached:
             break
-    
     return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
-
-def towards(cur_loc, wp, tau, vmax):
-    to_wp = wp-cur_loc
-    return to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)

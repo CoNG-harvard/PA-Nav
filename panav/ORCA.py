@@ -36,6 +36,10 @@ class ORCA_Agent:
         self.goal_reached = False
         
         self.id = id
+
+        # Tunnel passing state machine variables
+        self.state = 'free'
+        self.cur_edge = None 
     
     def update_v_opt(self,v_pref):
         self.v_opt = self.calc_v_opt(v_pref)
@@ -258,6 +262,23 @@ class Ordered_Agent(ORCA_Agent):
                 # print('Problem status:',prob.status,'Agent',self.id)
                 raise Exception
             ########
+            if np.linalg.norm(v_out)<=self.vmin:
+                print('Potential deadlock')
+                # Potential deadlock, engage the right-hand rule
+                for theta in np.pi * np.array([1/2,1]):
+                    # Rotate v_pref clockwise by theta.
+                    v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
+                                        [np.sin(-theta),np.cos(-theta)]]).dot(v_pref)
+
+                    prob = cp.Problem(cp.Minimize(cp.norm(v-v_right)),constraints)
+                    prob.solve()
+                    v_out = v.value
+
+                    # v_out = grid_solve_v(v_right)
+                    # if np.linalg.norm(v.value)>self.vmin:
+                    if la.norm(v_out)>self.vmin:
+                        # v_out = v.value 
+                        break
         except Exception:
             # print('Infeasible')
             return None
@@ -412,22 +433,6 @@ class VO:
                 print('Closely hit')
             else:
                 if zone == 2: # Relative velocity not in VO.
-                    # l = la.norm(self.center)*np.cos(self.phi)
-                    # thetas = [self.center_theta + self.phi,
-                    #           self.center_theta - self.phi]
-                    # p1,p2 = [l * np.array([np.cos(theta),np.sin(theta)])
-                    #          for theta in thetas]
-                    
-                    # proj1 = cp.Variable(p1.shape)
-                    # constraints = [
-                    #     (proj1 - p1) @ (self.center-p1)>=0,
-                    #     (proj1 - p2) @ (self.center-p2)>=0,
-                    #     (proj1 - (p1+p2)/2) @ (p1+p2)>=0
-                    # ]
-                    # prob = cp.Problem(cp.Minimize(cp.norm(proj1 - test_pt)),constraints)
-                    # prob.solve()
-                    # proj1 = proj1.value
-                    
                     c = (test_pt-self.center).dot(-self.center)/(la.norm(test_pt-self.center)*la.norm(self.center))
                     if c>=np.cos(np.pi/2-self.phi):
                         proj = self.center+\
@@ -446,12 +451,7 @@ class VO:
 
                         proj = proj[:,np.argmin(dist_2_proj)]
                     
-                    # dists = [la.norm(test_pt-proj1),la.norm(test_pt-proj2)]
-                    
-                    # proj = [proj1,proj2][np.argmin(dists)]
                     u = proj - test_pt
-
-                    # u = np.zeros(self.center.shape)
                 elif zone == 1:
                     side_thetas = [self.center_theta-self.phi, 
                                    self.center_theta+self.phi]
