@@ -236,9 +236,9 @@ class Ordered_Agent(ORCA_Agent):
 
         v = cp.Variable(v_pref.shape) 
         
-        constraints = [(v-(self.v_opt+u)) @ n >= 0+0.1 for u,n in zip(us,ns)]
+        constraints = [(v-(self.v_opt+u)) @ n >= 0+0.05 for u,n in zip(us,ns)]
 
-        constraints += [d/np.linalg.norm(d) @ (v*self.tau)+0.1 <= (np.linalg.norm(d)-self.bloating_r)
+        constraints += [d/np.linalg.norm(d) @ (v*self.tau)+0.05 <= (np.linalg.norm(d)-self.bloating_r)
                       for d in obstacle_d]
 
         # Maximum speed constraint
