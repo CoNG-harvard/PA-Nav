@@ -25,7 +25,7 @@ class DefaultEmtpyEnv(NavigationEnv):
 
         top, bottom = limits[1][1]-2.0,limits[1][0]+2.0
 
-        start_x_offset = abs(limits[0][0]) * 0.6
+        start_x_offset = abs(limits[0][0]) * 0.7
         goal_x_offset = start_x_offset + 2.0
 
         if N_agent % 2 == 0:

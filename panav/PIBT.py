@@ -10,7 +10,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
     start_T = time()
 
     paths = traffic_aware_HG_plan(HG)
-    print(paths)
+    # print(paths)
     ref_plan = [np.array([HG.node_loc(u) for u in path]).T for path in paths]
     plans = ref_plan
 
@@ -114,7 +114,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
     curr_t = 0
 
     for _ in range(400):
-        print("################# Time step {} ################".format(_))
+        # print("################# Time step {} ################".format(_))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)
@@ -191,7 +191,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                 valid = PIBT(a)
                 if not valid:
                     print("PIBT failed")
-                    return None
+                    return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
         # We assume agent a is ranked a among the agents when dealing with conflicts.
 
         # Execute the safe velocity.
