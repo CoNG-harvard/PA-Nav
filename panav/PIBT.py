@@ -17,7 +17,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
     # The execution time of ORCA velocity.
     # Should be much shorter than the safe interval tau.
     tau = 1.0 # The safe time interval. Can be generously long.
-    exec_tau = 0.5 * tau # Leaving a slight horizon margin helps avoid numerical inaccuracy in CVXPY optimization results.
+    exec_tau = 0.4 * tau # Leaving a slight horizon margin helps avoid numerical inaccuracy in CVXPY optimization results.
 
     start_locs = HG.env.starts
     goal_locs = HG.env.goals
@@ -115,8 +115,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
 
     curr_t = 0
 
-    for _ in range(400):
-        print("################# Time step {} ################".format(_))
+    for _ in range(1000):
+        # print("################# Time step {} ################".format(_))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)
@@ -151,10 +151,10 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                         HG.nodes[w]['occupant'] = a
                         orcas[a].state = 'tunnel_entry'
 
-                        print('agent',a,'entering tunnel',w,v)
+                        # print('agent',a,'entering tunnel',w,v)
                 else:
 
-                    print('agent',a,'waiting at tunnel',w,v)
+                    # print('agent',a,'waiting at tunnel',w,v)
                     orcas[a].state = 'tunnel_waiting'
             
 
@@ -173,7 +173,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                             orcas[a].state = 'free'
                             e = orcas[a].cur_edge
 
-                            print('agent',a,'leaving tunnel',e)
+                            # print('agent',a,'leaving tunnel',e)
                             HG.edges[e]['occupants'].remove(a)
                             orcas[a].cur_edge = None
                     

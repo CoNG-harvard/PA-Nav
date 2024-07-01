@@ -9,6 +9,23 @@ from panav.util import unique_tx
 
 import numpy as np
 
+from shapely import LineString
+
+class StraightLinePlanner:
+    def __init__(self,env,bloating_r,vmax) -> None:
+        self.env = env
+        self.bloating_r = bloating_r
+        self.vmax = vmax
+    def plan(self,start,goal):
+        l = LineString([start,goal])
+
+        for o in self.env.obstacles:
+            if o.verts.distance(l)<self.bloating_r:
+                return None
+        t = np.array([0,l.length/self.vmax])
+        x = np.array([start,goal]).T
+        return (t,x)
+
 class HybridGraph(nx.DiGraph):
     def __init__(self, env, agent_radius,d = 2,  # Path planning parameters are hard coded for now.
                                         vmax = 1.0) -> None:
@@ -29,13 +46,15 @@ class HybridGraph(nx.DiGraph):
         self.goal_nodes = []
         self.tunnel_nodes = []
         
-        self.continuous_path_planner = partial(Tube_Planning, 
-                                        env = self.env, 
-                                        bloating_r = agent_radius, 
-                                        obs_trajectories=[], 
-                                        d = d,  # Path planning parameters are hard coded for now.
-                                        K = 1,
-                                        vmax = vmax)
+        self.planner = StraightLinePlanner(env,agent_radius,vmax)
+        self.continuous_path_planner = self.planner.plan
+        # self.continuous_path_planner = partial(Tube_Planning, 
+        #                                 env = self.env, 
+        #                                 bloating_r = agent_radius, 
+        #                                 obs_trajectories=[], 
+        #                                 d = d,  # Path planning parameters are hard coded for now.
+        #                                 K = 3,
+        #                                 vmax = vmax)
         # self.continuous_path_planner = Tube_Planning(self.env,None,None,vmax=vmax,bloating_r=agent_radius,d=d,K_max = 10)
         
         self.tunnels = detect_tunnels(env,agent_radius)
@@ -107,8 +126,8 @@ class HybridGraph(nx.DiGraph):
             min_travel_time = np.linalg.norm(tunnel.end_points[0]-tunnel.end_points[1])/self.vmax 
             # Won't be modified
 
-            self.add_node(u,type='tunnel',region = tunnel.end_regions[0],occupant = None,wait_offset = np.array([0.0,0.5]))
-            self.add_node(v,type='tunnel',region = tunnel.end_regions[1],occupant = None, wait_offset = np.array([0.0,0.5]))
+            self.add_node(u,type='tunnel',region = tunnel.end_regions[0],occupant = None)
+            self.add_node(v,type='tunnel',region = tunnel.end_regions[1],occupant = None)
 
             self.add_edge(u,v,type='hard', weight = min_travel_time,
                           continuous_time = np.array([0, min_travel_time]), continuous_path = np.array(tunnel.end_points).T,
@@ -156,10 +175,12 @@ class HybridGraph(nx.DiGraph):
                 # self.continuous_path_planner.start = self.node_loc(u)
                 # self.continuous_path_planner.goal = self.node_loc(v)
                 # path = self.continuous_path_planner.plan()
+                # if u==1 and v==0:
+                #     print(u,v)
                 path = self.continuous_path_planner(start = self.node_loc(u),goal = self.node_loc(v))
 
                 if path is None:
-                    print("Path not find. Consider increasing the K value. Skipping edge ",u,v)
+                    # print("Path not find. Consider increasing the K value. Skipping edge ",u,v)
                     continue
                 else:
                     t,x = unique_tx(*path)
