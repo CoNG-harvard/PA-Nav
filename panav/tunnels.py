@@ -23,6 +23,7 @@ class Tunnel:
         self.perps = [n1,n2]
 
         self.end_point_buffer = 0.5
+        # self.end_point_buffer = 0.3
 
         self.end_points = [np.mean(face,axis=0)- p*self.end_point_buffer for face,p in zip(self.faces,self.perps)] # The end points of an hard edge. Set it to be slightly outside of the tunnel.
         self.end_regions = [box_2d_center(ep, side = 0.1) for ep in self.end_points] # The waiting region around end points. Used in path planning.

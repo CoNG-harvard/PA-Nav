@@ -115,8 +115,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
 
     curr_t = 0
 
-    for _ in range(1000):
-        # print("################# Time step {} ################".format(_))
+    for _ in range(300):
+        print("################# Time step {} ################".format(_))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)

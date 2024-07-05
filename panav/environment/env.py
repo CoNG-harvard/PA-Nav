@@ -54,3 +54,21 @@ class MultiTunnelEnv(DefaultEmtpyEnv):
         obstacles = multi_tunnel_wall(n_tunnel,tunnel_width,y_min,y_max,wall_thickness=wallthickness)
 
         self.obstacles = obstacles
+        
+class WareHouse(DefaultEmtpyEnv):
+
+    def __init__(self, limits=[(-10,10),(-10,10)], N_agent=6,
+                 shelf_region_x_limit = [-5.0,5.0],shelf_region_y_limit = [-5.0,5.0],
+                 obs_x_margin = 3 * 0.5,obs_y_margin = 3 * 0.5,
+                 n_col = 4,n_row = 4):
+        super().__init__(limits, N_agent)
+   
+        w = (shelf_region_x_limit[1] - shelf_region_x_limit[0] - (n_col-1)*obs_x_margin )/n_col
+        h = (shelf_region_y_limit[1] - shelf_region_y_limit[0] - (n_row-1)*obs_y_margin )/n_row
+
+        lower_left_corner = np.array([shelf_region_x_limit[0],shelf_region_y_limit[0]])
+        
+        for i in range(n_col):
+            for j in range(n_row):
+                o = box_2d_center(lower_left_corner+np.array([w/2 + i * (w+obs_x_margin), h/2 + j * (h+obs_y_margin)]),np.array([w,h]))
+                self.obstacles.append(o)
