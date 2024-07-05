@@ -35,6 +35,7 @@ def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None):
         draw_obstacle(o,ax)
    
     # Plot start and goal zones.
+    env.calc_start_goal_regions()
     for agent_ID,s in enumerate(env.start_regions):
         x,y = draw_start(s,ax, label = 'Start' if agent_ID==0 else '')
         if show_agent_ID:

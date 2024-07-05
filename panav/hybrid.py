@@ -138,7 +138,8 @@ class HybridGraph(nx.DiGraph):
                          # continuous_time is at least min_travel_time on hard edges.
 
             self.tunnel_nodes.extend([u,v])
-
+        
+        self.env.calc_start_goal_regions()
         starts,goals = self.env.start_regions, self.env.goal_regions
         # Add start nodes
         self.start_nodes = list(np.arange(self.number_of_nodes(),

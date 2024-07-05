@@ -12,6 +12,7 @@ class NavigationEnv:
         self.starts = starts
         self.goals = goals
 
+    def calc_start_goal_regions(self):
         # The following are for visualization only and not used in planning
         start_box_side = goal_box_side = 1.0
         self.start_regions = [box_2d_center(s,start_box_side) for s in self.starts]
