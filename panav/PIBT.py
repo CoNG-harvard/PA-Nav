@@ -56,7 +56,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
 
                 # wait_loc = agent_loc + (np.random.rand(2)-0.5)*0# Temporary solution: prefer to stay at the current location when waiting.
                 v_prefs[agent] = towards(agent_loc,wait_loc,tau,vmax)
-                # print('agent', agent,'tunnel waiting v_pref',v_prefs[agent])
+                print('agent', agent,'tunnel waiting v_pref',v_prefs[agent])
         else:
             v_prefs[agent] = towards(agent_loc,target_wp,tau,vmax) # If not waiting, then head towards the target waypoint.            
 
@@ -83,15 +83,18 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
 
 
         for theta in np.pi * np.linspace(0,2,4)[:-1]:
+                v_p = v_prefs[a]
+                if la.norm(v_prefs[a])<1e-8:
+                    v_p = np.array([1,0]) * vmax
                 # Rotate v_pref clockwise by theta.
                 v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
-                                    [np.sin(-theta),np.cos(-theta)]]).dot(v_prefs[a])
+                                    [np.sin(-theta),np.cos(-theta)]]).dot(v_p)
                 candidate_v_pref.append(v_right)
 
         candidate_v_pref.append(np.array([0,0])) # Always have zero velocity as a candidate
         
         for v_pref in candidate_v_pref:
-            # print('agent',a,'v_pref',v_pref)
+            print('agent',a,'v_pref',v_pref)
             orcas[a].update_v(v_pref,HG.env.obstacles,[orcas[b] for b in P]) 
             if orcas[a].v is None:
                 return False
@@ -99,6 +102,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
             children_valid = True
             for c in C:
                 if orcas[c].v is None:
+                    print('Agent',a,' calling PIBT for agent', c)
                     children_valid = PIBT(c)
                     if not children_valid:
                         break
@@ -123,7 +127,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
 
         # Check for waypoint reaching and tunnel occupancy
         for a in agents:
-            # print('agent',a,'state',orcas[a].state)
+            print('agent',a,'state',orcas[a].state)
             curIdx = curr_wp_index[a]
             agent_loc = orcas[a].p
             target_wp = plans[a][:,curIdx]
@@ -151,15 +155,21 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                         HG.nodes[w]['occupant'] = a
                         orcas[a].state = 'tunnel_entry'
 
-                        # print('agent',a,'entering tunnel',w,v)
+                        print('agent',a,'entering tunnel',w,v)
                 else:
 
-                    # print('agent',a,'waiting at tunnel',w,v)
+                    print('agent',a,'waiting at tunnel',w,v)
                     orcas[a].state = 'tunnel_waiting'
             
-
+            if a==4:
+                print('agent',a,'waypoint index',curr_wp_index[a])
             if la.norm(agent_loc-target_wp)<= bloating_r:  
                 if curIdx == plans[a].shape[1]-1:
+                    print('target_wp',target_wp,'goal_locs[a]',goal_locs[a],'agent_loc',agent_loc)
+                    assert(la.norm(target_wp-goal_locs[a])<bloating_r)
+                    assert(la.norm(plans[a][:,-1]-goal_locs[a])<bloating_r)
+                    assert(la.norm(agent_loc-goal_locs[a])<bloating_r)
+                    
                     orcas[a].state = 'goal'
                 else:
                     match orcas[a].state:
@@ -173,10 +183,10 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,consider_entry=False):
                             orcas[a].state = 'free'
                             e = orcas[a].cur_edge
 
-                            # print('agent',a,'leaving tunnel',e)
+                            print('agent',a,'leaving tunnel',e)
                             HG.edges[e]['occupants'].remove(a)
                             orcas[a].cur_edge = None
-                    
+
                     curr_wp_index[a] += 1 
         
         
