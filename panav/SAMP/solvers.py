@@ -230,14 +230,14 @@ class Simple_MILP_Planning(SAMP_Base):
             return t,x,constraints,prob
         else:
             # print('number of integer constraints:',count_interger_var(prob))
-            prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
-            if t.value is not None:
+            prob.solve(solver='GUROBI',TimeLimit = 100) # The Gurobi solver proves to be more accurate and also faster.
+            if prob.status != 'optimal':
+                return None
+            else:
                 out = unique_tx(t.value,x.value)
                 del prob
                 return out
-            else:
-                return None
-
+            
 class Tube_Planning(SAMP_Base):
     def __init__(self, env, start, goal, 
                  vmax = 1, bloating_r = 0.5,d = 2, t0 = 0,K_max = 10,
@@ -338,13 +338,14 @@ class Tube_Planning(SAMP_Base):
             return t,x,constraints,prob
         else:
             # print('number of integer constraints:',count_interger_var(prob))
-            prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
-            if t.value is not None:
+            prob.solve(solver='GUROBI',TimeLimit = 100) # The Gurobi solver proves to be more accurate and also faster.
+            if prob.status == 'optimal':
                 out = unique_tx(t.value[0,:],x.value)
                 del prob
                 return out
             else:
                 return None
+      
         
     def Standard_Tube_Var_Constraints(self,start,goal,tube_obs,K):
         
@@ -456,8 +457,8 @@ class Path_Tracking(Tube_Planning):
             return t,x,constraints,prob
         else:
             # print('number of integer constraints:',count_interger_var(prob))
-            prob.solve(solver='GUROBI',reoptimize =True) # The Gurobi solver proves to be more accurate and also faster.
-            if t.value is not None:
+            prob.solve(solver='GUROBI',TimeLimit = 100) # The Gurobi solver proves to be more accurate and also faster.
+            if prob.status == 'optimal':
                 out = unique_tx(t.value[0,:],x.value)
                 del prob
                 return out

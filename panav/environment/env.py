@@ -99,14 +99,14 @@ class WareHouse(DefaultEmtpyEnv):
         bottom_starts = [np.array([x,limits[1][0]+corner_padding_y * 0.5 + bloating_r * 2]) for x in np.linspace(limits[0][0]+corner_padding_x + bloating_r,limits[0][1]-corner_padding_x-bloating_r,start_bottom)]
         left_starts = [np.array([limits[0][0]+corner_padding_x * 0.5 + bloating_r * 2,y]) for y in np.linspace(limits[1][0]+corner_padding_y + bloating_r,limits[1][1]-corner_padding_y-bloating_r,start_left)]
 
-        self.starts = top_starts + right_starts + bottom_starts + left_starts
+        self.starts = np.array(top_starts + right_starts + bottom_starts + left_starts)
 
         bottom_goals = [np.array([x,limits[1][0]+corner_padding_y * 0.5-bloating_r * 2]) for x,_ in top_starts][::-1]
         left_goals = [np.array([limits[0][0]+corner_padding_x * 0.5-bloating_r * 2,y]) for _,y in right_starts][::-1]
         top_goals = [np.array([x,limits[1][1]-corner_padding_y * 0.5+bloating_r * 2]) for x,_ in bottom_starts][::-1]
         right_goals = [np.array([limits[0][1]-corner_padding_x * 0.5+bloating_r * 2,y]) for _,y in left_starts][::-1]
 
-        self.goals = bottom_goals + left_goals + top_goals + right_goals
+        self.goals = np.array(bottom_goals + left_goals + top_goals + right_goals)
 
         self.calc_start_goal_regions()
 
