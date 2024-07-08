@@ -111,16 +111,14 @@ class WareHouse(DefaultEmtpyEnv):
         self.calc_start_goal_regions()
 
 
-    def get_tunnels(self):
+    def get_tunnels(self,separate_row_col = False):
 
-        col_tunnels = []
-        row_tunnels = []
+        col_tunnels = [[] for _ in range(self.n_row-1)]
+        row_tunnels = [[] for _ in range(self.n_row)] 
 
-        col = 0 
-        row = 0
 
-        for col in range(self.n_col):
-            for row in range(self.n_row-1):
+        for row in range(self.n_row-1):
+            for col in range(self.n_col):
                 f1_lo = self.low_left_corner + np.array([col * (self.w + self.x_margin),self.h + row * (self.y_margin+self.h)])
                 f1_hi = f1_lo + np.array([0,self.y_margin])
                 f1 = [f1_lo,f1_hi]
@@ -132,11 +130,10 @@ class WareHouse(DefaultEmtpyEnv):
 
                 n1 = f2_lo - f1_lo
                 n2 = -n1
+                col_tunnels[row].append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
 
-                col_tunnels.append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
-
-        for col in range(self.n_col-1):
-            for row in range(self.n_row):
+        for row in range(self.n_row):
+            for col in range(self.n_col-1):
                 f1_l = self.low_left_corner + np.array([self.w + col * (self.w + self.x_margin), row * (self.y_margin+self.h)])
                 f2_l = f1_l + np.array([0,self.h])
             
@@ -150,6 +147,11 @@ class WareHouse(DefaultEmtpyEnv):
                 n1 = f2_l - f1_l
                 n2 = -n1
 
-                row_tunnels.append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
+                row_tunnels[row].append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
 
-        return col_tunnels+row_tunnels
+        if separate_row_col:
+            return col_tunnels,row_tunnels
+        else:
+            col_tunnels = [t for tun in col_tunnels for t in tun]
+            row_tunnels = [t for tun in row_tunnels for t in tun]
+            return col_tunnels+row_tunnels
