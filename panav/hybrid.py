@@ -206,26 +206,29 @@ class HybridGraph(nx.DiGraph):
                 t,x = unique_tx(*path)
                 
             # See if the path passes through any tunnels
-            through_some_tunnel = False
             for tunnel in self.tunnels:
                 ent, ex = get_entry_exit(tunnel,x)
 
                 if not(ent is None and ex is None):
-                    # print(u,v,"Pass through tunnel at ", tunnel.region.centroid)
+                    # print(u,v,"Pass through tunnel at ", tunnel.region.centroid,'path',x)
                     through_some_tunnel = True
-                    break
+                    return False
 
-            if not through_some_tunnel: # u-v does not pass through any tunnel.
-                G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
-                return True
+            # u-v does not pass through any tunnel.
+            G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
+            return True
+        
+        # print(u,v,f'identical({u==v}) or in G_soft already({(u,v) in G_soft.edges})')
         return False
     def __compute_G_soft__(self):
         # Add soft edges
         G_soft = nx.DiGraph() # Temporary graph to store soft edges and determine how nodes are grouped by open spaces.
         for u,v in product(self.nodes,self.nodes):
-            self.__try_add_soft_edge__(G_soft,u,v)
-           
-        
+            success = self.__try_add_soft_edge__(G_soft,u,v)
+            # print("Add soft edge ",u,v, "Success:",success)
+            success = self.__try_add_soft_edge__(G_soft,v,u)
+            # print("Add soft edge ",v,u, "Success:",success)
+                   
         return G_soft
 
     def __construct_hybrid_graph__(self):
@@ -233,13 +236,13 @@ class HybridGraph(nx.DiGraph):
         # Every node has a region attribute: a panav.env.Region object.
         # Every node has a type attribute: type \in {'start','goal','tunnel'}. Tunnel endpoints are of type 'tunnel'
         # Every edge has a hardness attribute: type \in {'soft','hard'}.
-        self.__add_hard_edges__()
 
-        self.env.calc_start_goal_regions()
-        
         self.__add_start_nodes__()
 
         self.__add_goal_nodes__()
+        self.env.calc_start_goal_regions()
+        
+        self.__add_hard_edges__()
        
         G_soft = self.__compute_G_soft__()
         
