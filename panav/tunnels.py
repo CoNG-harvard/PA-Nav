@@ -10,7 +10,7 @@ from scipy.spatial import ConvexHull
 import cvxpy as cp
 
 class Tunnel:
-    def __init__(self,face1,n1,face2,n2):
+    def __init__(self,face1,n1,face2,n2, end_point_buffer = 0.0):
         '''
             face1: [point1,point2], a list of two vectors. One face of the tunnel.
             face2: same format as face 1.
@@ -18,11 +18,13 @@ class Tunnel:
 
             n1: the normal vector of face1 pointing inside the tunnel.
             n2: the normal vector of face2 pointing inside the tunnel.
+
+            end_point_buffer: how much should the tunnel end point locations portrude out of the tunnel region.
         '''
         self.faces = [face1,face2]
         self.perps = [n1,n2]
 
-        self.end_point_buffer = 0.5
+        self.end_point_buffer = end_point_buffer
         # self.end_point_buffer = 0.3
 
         self.end_points = [np.mean(face,axis=0)- p*self.end_point_buffer for face,p in zip(self.faces,self.perps)] # The end points of an hard edge. Set it to be slightly outside of the tunnel.

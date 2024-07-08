@@ -58,10 +58,11 @@ def traffic_aware_HG_plan(HG,consider_soft_traffic=False):
         path = nx.shortest_path(HG,s,g,weight = "traffic_cost")
         # print(path)
 
-        # Update the edge flow along the path
+        # Update the edge flow and node flow along the path
         for i in range(len(path)-1):
             p,q = path[i],path[i+1]
             HG.edges[p,q]['flow'] += 1
+            HG.nodes[q]['flow'] += 1
 
         paths.append(path)
         # Important: update graph traffic

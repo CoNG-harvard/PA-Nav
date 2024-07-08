@@ -1,5 +1,6 @@
 import numpy as np
 from panav.environment.utils import box_2d_center,multi_tunnel_wall
+from panav.tunnels import Tunnel
 
 
 class NavigationEnv:
@@ -72,3 +73,54 @@ class WareHouse(DefaultEmtpyEnv):
             for j in range(n_row):
                 o = box_2d_center(lower_left_corner+np.array([w/2 + i * (w+obs_x_margin), h/2 + j * (h+obs_y_margin)]),np.array([w,h]))
                 self.obstacles.append(o)
+        
+        self.w = w
+        self.h = h
+        self.low_left_corner = lower_left_corner
+        self.x_margin = obs_x_margin
+        self.y_margin = obs_y_margin
+        self.n_col = n_col
+        self.n_row = n_row
+
+    def get_tunnels(self):
+
+        col_tunnels = []
+        row_tunnels = []
+
+        col = 0 
+        row = 0
+
+        for col in range(self.n_col):
+            for row in range(self.n_row-1):
+                f1_lo = self.low_left_corner + np.array([col * (self.w + self.x_margin),self.h + row * (self.y_margin+self.h)])
+                f1_hi = f1_lo + np.array([0,self.y_margin])
+                f1 = [f1_lo,f1_hi]
+
+
+                f2_lo = f1_lo + np.array([self.w,0])
+                f2_hi = f1_hi + np.array([self.w,0])
+                f2 = [f2_lo,f2_hi]
+
+                n1 = f2_lo - f1_lo
+                n2 = -n1
+
+                col_tunnels.append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
+
+        for col in range(self.n_col-1):
+            for row in range(self.n_row):
+                f1_l = self.low_left_corner + np.array([self.w + col * (self.w + self.x_margin), row * (self.y_margin+self.h)])
+                f2_l = f1_l + np.array([0,self.h])
+            
+
+                f1_r = f1_l + np.array([self.x_margin,0])
+                f2_r = f2_l + np.array([self.x_margin,0])
+
+                f1 = [f1_l,f1_r]
+                f2 = [f2_l,f2_r]
+
+                n1 = f2_l - f1_l
+                n2 = -n1
+
+                row_tunnels.append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
+
+        return col_tunnels+row_tunnels

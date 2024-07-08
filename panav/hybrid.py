@@ -28,10 +28,13 @@ class StraightLinePlanner:
 
 class HybridGraph(nx.DiGraph):
     def __init__(self, env, agent_radius,d = 2,  # Path planning parameters are hard coded for now.
-                                        vmax = 1.0) -> None:
+                                        vmax = 1.0,
+                                        tunnels = None) -> None:
         ''' 
             env: a panav.env.NavigationEnv object.
             agent_radius: double, the bloating radius of the agent. Used in tunnel detection.
+            tunnels (optional): a list of panav.tunnels.Tunnel objects. 
+                                If None is provided, we would attempt to automatically identify the tunnels in the environment.
         '''    
         super().__init__()
         
@@ -57,7 +60,13 @@ class HybridGraph(nx.DiGraph):
         #                                 vmax = vmax)
         # self.continuous_path_planner = Tube_Planning(self.env,None,None,vmax=vmax,bloating_r=agent_radius,d=d,K_max = 10)
         
-        self.tunnels = detect_tunnels(env,agent_radius)
+        # print("Detecting tunnels")
+        if tunnels is None:
+            self.tunnels = detect_tunnels(env,agent_radius)
+        else:
+            self.tunnels = tunnels
+
+        # print("Constructing hybrid graph")
         self.__construct_hybrid_graph__()
 
         # Initialize the traffic flow.
@@ -66,6 +75,9 @@ class HybridGraph(nx.DiGraph):
         
     def __reset_traffic__(self):
         # Reset the traffic flow to all zero.
+        for s in self.nodes:
+            self.nodes[s]['flow'] = 0
+
         for e in self.edges:
             self.edges[e]['flow']=0
             self.edges[e]['traffic_cost']=self.edges[e]['weight']
@@ -93,13 +105,16 @@ class HybridGraph(nx.DiGraph):
         for k,q in self.edges:
             if self.edges[k,q]['type']=='hard':
                                                   # This is also known as the contra-flow cost
-                a = 10
-                b = 1
-                c = 1
+                a = 1
+                # b = 10
+                # c = 10
+                b = c = 1
+                d = 10
                 self.edges[k,q]['traffic_cost'] = (1+\
                                                    a * self.edges[q,k]['flow'] * self.edges[k,q]['flow']+\
                                                    b * self.edges[k,q]['flow']+\
-                                                   c * self.edges[q,k]['flow'])\
+                                                   c * self.edges[q,k]['flow']+
+                                                   d * self.nodes[q]['flow'])\
                                                 * self.edges[k,q]['weight'] 
                 
             elif update_soft: 
