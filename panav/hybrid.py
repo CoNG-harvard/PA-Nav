@@ -126,14 +126,8 @@ class HybridGraph(nx.DiGraph):
                                                 * self.edges[k,q]['weight']
                 
 
-
-    def __construct_hybrid_graph__(self):
-        
-        # Every node has a region attribute: a panav.env.Region object.
-        # Every node has a type attribute: type \in {'start','goal','tunnel'}. Tunnel endpoints are of type 'tunnel'
-        # Every edge has a hardness attribute: type \in {'soft','hard'}.
-
-        # Add hard edges + tunnel nodes
+    def __add_hard_edges__(self):
+         # Add hard edges + tunnel nodes
         for i,tunnel in enumerate(self.tunnels): 
             u = 2*i
             v = 2*i+1
@@ -153,21 +147,38 @@ class HybridGraph(nx.DiGraph):
                          # continuous_time is at least min_travel_time on hard edges.
 
             self.tunnel_nodes.extend([u,v])
+    
+    def __add_start_nodes__(self):
         
-        self.env.calc_start_goal_regions()
-        starts,goals = self.env.start_regions, self.env.goal_regions
+        starts = self.env.start_regions
+
         # Add start nodes
         self.start_nodes = list(np.arange(self.number_of_nodes(),
                 self.number_of_nodes()+len(starts)))
         self.add_nodes_from(self.start_nodes, type = 'start')
         nx.set_node_attributes(self,{n:{'region':region,'agent':agent} for agent,(n,region) in enumerate(zip(self.start_nodes,starts))})
-
+    
+    def __add_goal_nodes__(self):
+        goals = self.env.goal_regions
         # Add goal nodes
         self.goal_nodes = list(np.arange(self.number_of_nodes(),
                 self.number_of_nodes()+len(goals)))
         self.add_nodes_from(self.goal_nodes, type = 'goal')
         nx.set_node_attributes(self,{n:{'region':region,'agent':agent} for agent,(n,region) in enumerate(zip(self.goal_nodes,goals))})
         
+    def __construct_hybrid_graph__(self):
+        
+        # Every node has a region attribute: a panav.env.Region object.
+        # Every node has a type attribute: type \in {'start','goal','tunnel'}. Tunnel endpoints are of type 'tunnel'
+        # Every edge has a hardness attribute: type \in {'soft','hard'}.
+        self.__add_hard_edges__()
+
+        self.env.calc_start_goal_regions()
+        
+        self.__add_start_nodes__()
+
+        self.__add_goal_nodes__()
+       
         # Add soft edges
         G_soft = nx.DiGraph() # Temporary graph to store soft edges and determine how nodes are grouped by open spaces.
         legal_endpoint_types = [("tunnel","tunnel"),("start","tunnel"),("tunnel","goal"), ("start","goal")]
@@ -234,4 +245,4 @@ class HybridGraph(nx.DiGraph):
     
     def node_locs(self):
         return [self.node_loc(s) for s in self.nodes]
-    
+
