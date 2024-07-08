@@ -61,7 +61,8 @@ class WareHouse(DefaultEmtpyEnv):
     def __init__(self, limits=[(-10,10),(-10,10)], N_agent=6,
                  shelf_region_x_limit = [-5.0,5.0],shelf_region_y_limit = [-5.0,5.0],
                  obs_x_margin = 3 * 0.5,obs_y_margin = 3 * 0.5,
-                 n_col = 4,n_row = 4):
+                 n_col = 4,n_row = 4,
+                 corner_padding_x = 2.0,corner_padding_y = 2.0,bloating_r = 0.5):
         super().__init__(limits, N_agent)
    
         w = (shelf_region_x_limit[1] - shelf_region_x_limit[0] - (n_col-1)*obs_x_margin )/n_col
@@ -81,6 +82,34 @@ class WareHouse(DefaultEmtpyEnv):
         self.y_margin = obs_y_margin
         self.n_col = n_col
         self.n_row = n_row
+
+
+        n_sides = [0] * 4
+
+        div = N_agent // 4
+        res = N_agent % 4
+        for i in range(4):
+            n_sides[i] = div + (res>0)
+            res -= 1
+
+        start_top, start_right, start_bottom, start_left = n_sides
+
+        top_starts = [np.array([x,limits[1][1]-corner_padding_y * 0.5 - bloating_r * 2]) for x in np.linspace(limits[0][0]+corner_padding_x + bloating_r,limits[0][1]-corner_padding_x-bloating_r,start_top)]
+        right_starts = [np.array([limits[0][1]-corner_padding_x * 0.5 - bloating_r * 2,y]) for y in np.linspace(limits[1][0]+corner_padding_y + bloating_r,limits[1][1]-corner_padding_y-bloating_r,start_right)]
+        bottom_starts = [np.array([x,limits[1][0]+corner_padding_y * 0.5 + bloating_r * 2]) for x in np.linspace(limits[0][0]+corner_padding_x + bloating_r,limits[0][1]-corner_padding_x-bloating_r,start_bottom)]
+        left_starts = [np.array([limits[0][0]+corner_padding_x * 0.5 + bloating_r * 2,y]) for y in np.linspace(limits[1][0]+corner_padding_y + bloating_r,limits[1][1]-corner_padding_y-bloating_r,start_left)]
+
+        self.starts = top_starts + right_starts + bottom_starts + left_starts
+
+        bottom_goals = [np.array([x,limits[1][0]+corner_padding_y * 0.5-bloating_r * 2]) for x,_ in top_starts][::-1]
+        left_goals = [np.array([limits[0][0]+corner_padding_x * 0.5-bloating_r * 2,y]) for _,y in right_starts][::-1]
+        top_goals = [np.array([x,limits[1][1]-corner_padding_y * 0.5+bloating_r * 2]) for x,_ in bottom_starts][::-1]
+        right_goals = [np.array([limits[0][1]-corner_padding_x * 0.5+bloating_r * 2,y]) for _,y in left_starts][::-1]
+
+        self.goals = bottom_goals + left_goals + top_goals + right_goals
+
+        self.calc_start_goal_regions()
+
 
     def get_tunnels(self):
 

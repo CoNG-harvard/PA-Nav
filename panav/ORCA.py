@@ -265,7 +265,7 @@ class Ordered_Agent(ORCA_Agent):
             if np.linalg.norm(v_out)<=self.vmin:
                 print('Potential deadlock')
                 # Potential deadlock, engage the right-hand rule
-                for theta in np.pi * np.array([1/2,1]):
+                for theta in np.pi * np.array([1/2,1,3/2]):
                     # Rotate v_pref clockwise by theta.
                     v_right = np.array([[np.cos(-theta),-np.sin(-theta)],
                                         [np.sin(-theta),np.cos(-theta)]]).dot(v_pref)
@@ -277,6 +277,7 @@ class Ordered_Agent(ORCA_Agent):
                     # v_out = grid_solve_v(v_right)
                     # if np.linalg.norm(v.value)>self.vmin:
                     if la.norm(v_out)>self.vmin:
+                        print('Deadlock resolved at theta=',theta)
                         # v_out = v.value 
                         break
         except Exception:
