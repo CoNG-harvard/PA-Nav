@@ -273,3 +273,83 @@ class HybridGraph(nx.DiGraph):
     def node_locs(self):
         return [self.node_loc(s) for s in self.nodes]
 
+
+class WareHouseHG(HybridGraph):
+    def __init__(self, env, agent_radius, d=2, vmax=1) -> None:
+        super().__init__(env, agent_radius, d, vmax, env.get_tunnels())
+    
+    def __construct_hybrid_graph__(self):
+        self.env.calc_start_goal_regions()
+        
+        col_tunnels,row_tunnels = self.env.get_tunnels(separate_row_col = True)
+
+        # Add hard edges
+        peripheral_nodes = []
+        row_tunnel_nodes = [[] for _ in range(len(row_tunnels))]
+        col_tunnel_nodes = [[] for _ in range(len(col_tunnels))]
+        for row in range(len(col_tunnels)):
+            for col in range(len(col_tunnels[row])):
+                u,v = self.__add_hard_edge__(col_tunnels[row][col])
+                
+                col_tunnel_nodes[row].append([u,v])
+                
+                if col in  [0, len(col_tunnels[row])-1]:
+                    peripheral_nodes += [u,v]
+
+        for row in range(len(row_tunnels)):
+            for col in range(len(row_tunnels[row])):
+                u,v = self.__add_hard_edge__(row_tunnels[row][col])
+                
+                row_tunnel_nodes[row].append([u,v])
+                
+                if row in  [0, len(row_tunnels)-1]:
+                    peripheral_nodes += [u,v]
+
+       
+        # Add start and goal nodes
+        self.__add_start_nodes__()
+        self.__add_goal_nodes__()
+        
+        # Add soft edges from start/goal to peripheral tunnels
+        G_soft= nx.DiGraph()
+        for u in self.start_nodes:
+            for v in peripheral_nodes:
+                self.__try_add_soft_edge__(G_soft,u,v)
+        
+        for u in self.goal_nodes:
+            for v in peripheral_nodes:
+                self.__try_add_soft_edge__(G_soft,v,u)
+                
+                
+        # Add soft edges in the interior of the tunnel mesh
+        for row in range(len(col_tunnel_nodes)):
+            for col in range(len(col_tunnel_nodes[row])): 
+                neighbors = []
+
+                if col < len(col_tunnel_nodes[row])-1:
+                    neighbors += row_tunnel_nodes[row][col] + row_tunnel_nodes[row+1][col] + col_tunnel_nodes[row][col+1]
+                if col > 0:
+                    neighbors += row_tunnel_nodes[row+1][col-1]
+
+                for s in col_tunnel_nodes[row][col]:
+                    for nb in neighbors:
+                        success = self.__try_add_soft_edge__(G_soft,s,nb)   
+                        if success:
+                            self.__force_add_soft_edge__(G_soft,nb,s)   
+        
+        
+       
+        for row in range(len(row_tunnel_nodes)-1): # There are no tunnels above the top row
+            for col in range(len(row_tunnel_nodes[row])):
+                neighbors = row_tunnel_nodes[row+1][col] + col_tunnel_nodes[row][col+1]
+
+                for s in row_tunnel_nodes[row][col]:
+                    for nb in neighbors:
+                        success = self.__try_add_soft_edge__(G_soft,s,nb)   
+                        if success:
+                            self.__force_add_soft_edge__(G_soft,nb,s)   
+        
+       
+        
+        # Add soft edges to G
+        self.add_edges_from(G_soft.edges(data=True))    
