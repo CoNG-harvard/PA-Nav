@@ -172,6 +172,20 @@ class HybridGraph(nx.DiGraph):
         self.add_nodes_from(self.goal_nodes, type = 'goal')
         nx.set_node_attributes(self,{n:{'region':region,'agent':agent} for agent,(n,region) in enumerate(zip(self.goal_nodes,goals))})
 
+    def __force_add_soft_edge__(self,G_soft,u,v):
+        
+        # Plan the shortest continuous path             
+        path = self.continuous_path_planner(start = self.node_loc(u),goal = self.node_loc(v))
+
+        if path is None:
+            # print("Path not find. Consider increasing the K value. Skipping edge ",u,v)
+            return False
+        else:
+            t,x = unique_tx(*path)
+            G_soft.add_edge(u,v,type='soft', continuous_path = x, continuous_time= t, weight = np.max(t))
+            return True
+
+
     def __try_add_soft_edge__(self,G_soft,u,v):
         '''
             Return value: True (soft edge (u,v) added to G_soft) or False (soft edge (u,v) not added to G_soft)
@@ -189,14 +203,7 @@ class HybridGraph(nx.DiGraph):
                 # print('Skipping illegal start-goal connection for edge',u,v)
                 return False
 
-            ## Determine if the shortest path between u, v passes through any tunnels
-            
             # Plan the shortest continuous path             
-            # self.continuous_path_planner.start = self.node_loc(u)
-            # self.continuous_path_planner.goal = self.node_loc(v)
-            # path = self.continuous_path_planner.plan()
-            # if u==1 and v==0:
-            #     print(u,v)
             path = self.continuous_path_planner(start = self.node_loc(u),goal = self.node_loc(v))
 
             if path is None:
@@ -211,7 +218,6 @@ class HybridGraph(nx.DiGraph):
 
                 if not(ent is None and ex is None):
                     # print(u,v,"Pass through tunnel at ", tunnel.region.centroid,'path',x)
-                    through_some_tunnel = True
                     return False
 
             # u-v does not pass through any tunnel.
