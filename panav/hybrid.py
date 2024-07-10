@@ -29,7 +29,8 @@ class StraightLinePlanner:
 class HybridGraph(nx.DiGraph):
     def __init__(self, env, agent_radius,d = 2,  # Path planning parameters are hard coded for now.
                                         vmax = 1.0,
-                                        tunnels = None) -> None:
+                                        tunnels = None,
+                                        construct_graph = True) -> None:
         ''' 
             env: a panav.env.NavigationEnv object.
             agent_radius: double, the bloating radius of the agent. Used in tunnel detection.
@@ -66,11 +67,12 @@ class HybridGraph(nx.DiGraph):
         else:
             self.tunnels = tunnels
 
-        # print("Constructing hybrid graph")
-        self.__construct_hybrid_graph__()
+        if construct_graph:
+            # print("Constructing hybrid graph")
+            self.__construct_hybrid_graph__()
 
-        # Initialize the traffic flow.
-        self.__reset_traffic__()
+            # Initialize the traffic flow.
+            self.__reset_traffic__()
        
         
     def __reset_traffic__(self):
