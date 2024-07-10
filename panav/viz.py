@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry.polygon import Polygon
 from shapely.plotting import plot_polygon
 
-def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None):
+def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None,obs_alpha = 0.3):
     '''
         env: the path planning environment.
 
@@ -32,7 +32,7 @@ def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None):
         
     # Plot the obstacles
     for o in env.obstacles:
-        draw_obstacle(o,ax)
+        draw_obstacle(o,ax,obs_alpha)
    
     # Plot start and goal zones.
     env.calc_start_goal_regions()
@@ -61,11 +61,11 @@ def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None):
     if env.starts is not None or env.goals is not None:
         ax.legend()
 
-def draw_obstacle(o,ax):
+def draw_obstacle(o,ax,alpha = 0.3):
     verts = o.vertices()
     poly = Polygon(verts)
     x, y = poly.exterior.xy
-    ax.fill(x, y, facecolor='r', alpha=0.3)
+    ax.fill(x, y, facecolor='r', alpha=alpha)
     
 def draw_start(o,ax,label = ''):
     verts = o.vertices()
