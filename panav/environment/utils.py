@@ -46,6 +46,19 @@ def multi_tunnel_wall(n_tunnel,tunnel_width,y_min,y_max,wall_thickness=5, wall_x
             obstacles.append(box_2d_center(center,side))
         return obstacles
 
+def horizontal_multi_tunnel_wall(n_tunnel,tunnel_width,x_min,x_max,wall_thickness=5, wall_y_offset=0):
+        w = tunnel_width # Tunnel width
+        s = (x_max-x_min-w*n_tunnel)/(n_tunnel+1) # Spacing between tunnels
+
+        d = wall_thickness # Thickness of the wall
+
+        obstacles = []
+        for i in range(n_tunnel+1):
+            side = np.array([d,s])
+            center = np.array([wall_y_offset, x_max-s/2-i*(s+w)])
+            obstacles.append(box_2d_center(center,side))
+        return obstacles
+
 def trajectory_to_temp_obstacles(t,xs,bloating_r):
     # Convert the agent's path into temporary obstacle.
     temp_obstacles = []
