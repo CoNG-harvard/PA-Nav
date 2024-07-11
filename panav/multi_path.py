@@ -4,7 +4,7 @@ from panav.environment.utils import line_seg_to_obstacle,box_2d_center
 from shapely import LineString,Point
 
 
-def shortest_path(env,start,goal,K=2,d=2,
+def shortest_path(env,obs_in_conflict,start,goal,K=2,d=2,
                   existing_paths = [],
                   bloating_r = 0.5,goal_reach_eps = 0.5,local_plan_radius = None):
     M = 100 * np.max(np.abs(env.limits))
@@ -25,7 +25,7 @@ def shortest_path(env,start,goal,K=2,d=2,
     constraints.append(x >= np.array(env.limits)[:,0].reshape(-1,1) + bloating_r)
 
     # Static obstacle constraints
-    obs = env.obstacles+[]
+    obs = obs_in_conflict
 
     # Separation constraint
     if len(existing_paths)>0:
@@ -37,12 +37,12 @@ def shortest_path(env,start,goal,K=2,d=2,
             
 
     for O in obs:
-        if local_plan_radius is not None:
-            if O.verts.distance(LineString([start,goal]))>local_plan_radius:
-            # if O.verts.distance(Point(start))>local_plan_radius:
-            # to_obs = O.project(self.p) - self.p
-            # if la.norm(to_obs)<=self.vmax*self.tau+1.5*self.bloating_r: 
-                continue
+        # if local_plan_radius is not None:
+        #     if O.verts.distance(LineString([start,goal]))>local_plan_radius:
+        #     # if O.verts.distance(Point(start))>local_plan_radius:
+        #     # to_obs = O.project(self.p) - self.p
+        #     # if la.norm(to_obs)<=self.vmax*self.tau+1.5*self.bloating_r: 
+        #         continue
 
         A, b= O.A,O.b
 

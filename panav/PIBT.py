@@ -6,7 +6,7 @@ from panav.ORCA import Ordered_Agent
 
 from time import time
 
-def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
+def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
     start_T = time()
 
     paths = traffic_aware_HG_plan(HG)
@@ -55,11 +55,11 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
                 wait_loc = pw + 0.8 * entry_r * (pw-pv)/la.norm(pw-pv+1e-5)
 
                 # wait_loc = agent_loc + (np.random.rand(2)-0.5)*0# Temporary solution: prefer to stay at the current location when waiting.
-                v_prefs[agent] = towards(agent_loc,wait_loc,tau,vmax,HG.env,bloating_r)
+                v_prefs[agent] = towards(agent_loc,wait_loc,tau,vmax,HG.env,bloating_r,simple_plan)
                 if debug:
                     print('agent', agent,'tunnel waiting v_pref',v_prefs[agent])
         else:
-            v_prefs[agent] = towards(agent_loc,target_wp,tau,vmax,HG.env,bloating_r) # If not waiting, then head towards the target waypoint.            
+            v_prefs[agent] = towards(agent_loc,target_wp,tau,vmax,HG.env,bloating_r,simple_plan) # If not waiting, then head towards the target waypoint.            
 
     def PIBT(a):
         if time()-start_T>TIMEOUT:
@@ -122,6 +122,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
 
     curr_t = 0
 
+    active_agents = set(agents)
     for _ in range(500):
         # if debug:
         if True:
@@ -131,7 +132,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
             times[a].append(curr_t)
 
         # Check for waypoint reaching and tunnel occupancy
-        for a in agents:
+        # for a in agents:
+        for a in active_agents:
             if debug:
                 print('agent',a,'state',orcas[a].state)
             curIdx = curr_wp_index[a]
@@ -197,7 +199,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
                     curr_wp_index[a] += 1 
         
         
-        for a in agents:
+        # for a in agents:
+        for a in active_agents:
             # Compute the preferred velocity.
             calc_pref(a)         
 
@@ -211,7 +214,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
                 orcas[a].vmax = vmax # In tunnel, move quickly 
         
         
-        for a in agents: 
+        # for a in agents: 
+        for a in active_agents:
             if orcas[a].v is None:
                 valid = PIBT(a)
                 if not valid:
@@ -222,7 +226,9 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
         # Execute the safe velocity.
         all_reached = True
         
-        for a in agents:
+        # for a in agents:
+        retired_agents = []
+        for a in active_agents:
             dist2goal = np.linalg.norm(orcas[a].p - goal_locs[a])
     
             if dist2goal>=0.5*bloating_r:
@@ -234,6 +240,11 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
             else:
                 orcas[a].goal_reached = True
                 orcas[a].v = orcas[a].v_opt = np.array([0,0])
+                retired_agents.append(a) 
+
+        # The active_agents' size cannot change in the loop above, so we have to do the removal outside.
+        for ra in retired_agents:
+            active_agents.remove(ra)
         
         curr_t += exec_tau
 
@@ -244,42 +255,36 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
 
 from shapely import LineString
 from panav.multi_path import shortest_path
-def towards(cur_loc, wp, tau, vmax, env, bloating_r):
+def towards(cur_loc, wp, tau, vmax, env, bloating_r,simple_plan = True):
 
-    no_conflict = True
-    for obs in env.obstacles:
-        if la.norm(obs.project(cur_loc)-cur_loc)< 10*bloating_r:
-        # if O.verts.distance(LineString([start,goal]))>local_plan_radius:
-            if obs.verts.distance(LineString([cur_loc,wp]))<bloating_r:
-                no_conflict = False
-                break
+    obs_in_conflict = []
+    if not simple_plan:
+        no_conflict = True
+        for obs in env.obstacles:
+            if la.norm(obs.project(cur_loc)-cur_loc) < tau * vmax:
+                if obs.verts.distance(LineString([cur_loc,wp]))<bloating_r:
+                    no_conflict = False
+                    obs_in_conflict.append(obs)
 
-    
-    if no_conflict:
-        wp = wp
-    else:
-        print('Planning using MILP')
-        result = local_MILP_plan(env,cur_loc,wp,vmax,bloating_r)
-        if result is not None:
-            wp = result
         
+        if no_conflict:
+            wp = wp
+        else:
+            print('Planning using MILP')
+            result = local_MILP_plan(env,obs_in_conflict,cur_loc,wp,vmax,bloating_r)
+            if result is not None:
+                wp = result
+  
     to_wp = wp-cur_loc
     return to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)
 
 
 from panav.SAMP.solvers import Tube_Planning
-def local_MILP_plan(env,cur_loc,wp,vmax,bloating_r):
-    # solver = Tube_Planning(env,cur_loc,wp,vmax,bloating_r)
-    # result = solver.plan()
-    
-    # if result is not None:
-    #     _,x = result
-    #     # print(t,x)
-    #     return x[:,1]
+def local_MILP_plan(env,obs_in_conflict,cur_loc,wp,vmax,bloating_r):
     print(cur_loc,wp)
     r = bloating_r
     while True:
-        x,_ = shortest_path(env,cur_loc,wp,K=1,d=2,
+        x,_ = shortest_path(env,obs_in_conflict,cur_loc,wp,K=1,d=2,
                     existing_paths = [],
                     bloating_r = r,local_plan_radius=1.5*bloating_r)
         if x is not None:
