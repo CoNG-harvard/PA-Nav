@@ -6,7 +6,7 @@ from panav.ORCA import Ordered_Agent
 
 from time import time
 
-def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False):
+def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
     start_T = time()
 
     paths = traffic_aware_HG_plan(HG)
@@ -55,11 +55,11 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False):
                 wait_loc = pw + 0.8 * entry_r * (pw-pv)/la.norm(pw-pv+1e-5)
 
                 # wait_loc = agent_loc + (np.random.rand(2)-0.5)*0# Temporary solution: prefer to stay at the current location when waiting.
-                v_prefs[agent] = towards(agent_loc,wait_loc,tau,vmax)
+                v_prefs[agent] = towards(agent_loc,wait_loc,tau,vmax,bloating_r,simple_plan,HG.env,bloating_r)
                 if debug:
                     print('agent', agent,'tunnel waiting v_pref',v_prefs[agent])
         else:
-            v_prefs[agent] = towards(agent_loc,target_wp,tau,vmax) # If not waiting, then head towards the target waypoint.            
+            v_prefs[agent] = towards(agent_loc,target_wp,tau,vmax,bloating_r,simple_plan,HG.env,bloating_r) # If not waiting, then head towards the target waypoint.            
 
     def PIBT(a):
         if time()-start_T>TIMEOUT:
@@ -242,6 +242,38 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False):
     
     return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
 
-def towards(cur_loc, wp, tau, vmax):
+from shapely import LineString
+def towards(cur_loc, wp, tau, vmax,eps, simple_plan = True,env = None, bloating_r = None):
     to_wp = wp-cur_loc
-    return to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)
+
+    # if la.norm(to_wp)<eps:
+    #     return np.array([0,0])
+    
+    simple_sol = to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)
+
+    if simple_plan:
+        return simple_sol
+    
+    no_conflict = True
+    for obs in env.obstacles:
+        if obs.verts.distance(LineString([cur_loc,wp]))<bloating_r:
+            no_conflict = False
+            break
+
+    if no_conflict:
+        return simple_sol
+    
+    result = local_MILP_plan(env,cur_loc,wp,vmax,bloating_r)
+    if result is not None:
+        return result
+    return simple_sol
+
+from panav.SAMP.solvers import Tube_Planning
+def local_MILP_plan(env,cur_loc,wp,vmax,bloating_r):
+    solver = Tube_Planning(env,cur_loc,wp,vmax,bloating_r)
+    result = solver.plan()
+    if result is not None:
+        t,x = result
+        print(t,x)
+        return (x[:,1]-x[:,0])/(t[1]-t[0])
+    return None
