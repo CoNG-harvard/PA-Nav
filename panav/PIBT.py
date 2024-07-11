@@ -243,31 +243,44 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan = True):
     return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
 
 from shapely import LineString
+from panav.multi_path import shortest_path
 def towards(cur_loc, wp, tau, vmax, env, bloating_r):
+
+    no_conflict = True
+    for obs in env.obstacles:
+        if obs.verts.distance(LineString([cur_loc,wp]))<bloating_r:
+            no_conflict = False
+            break
+
+    
+    if no_conflict:
+        wp = wp
+    else:
+        print('Planning using MILP')
+        result = local_MILP_plan(env,cur_loc,wp,vmax,bloating_r)
+        if result is not None:
+            wp = result
+        
     to_wp = wp-cur_loc
-    
-    simple_sol = to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)
+    return to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)
 
-    # no_conflict = True
-    # for obs in env.obstacles:
-    #     if obs.verts.distance(LineString([cur_loc,wp]))<bloating_r:
-    #         no_conflict = False
-    #         break
-
-    # if no_conflict:
-    #     return simple_sol
-    
-    # result = local_MILP_plan(env,cur_loc,wp,vmax,bloating_r)
-    # if result is not None:
-    #     return result
-    return simple_sol
 
 from panav.SAMP.solvers import Tube_Planning
 def local_MILP_plan(env,cur_loc,wp,vmax,bloating_r):
-    solver = Tube_Planning(env,cur_loc,wp,vmax,bloating_r)
-    result = solver.plan()
-    if result is not None:
-        t,x = result
-        # print(t,x)
-        return (x[:,1]-x[:,0])/(t[1]-t[0])
-    return None
+    # solver = Tube_Planning(env,cur_loc,wp,vmax,bloating_r)
+    # result = solver.plan()
+    
+    # if result is not None:
+    #     _,x = result
+    #     # print(t,x)
+    #     return x[:,1]
+    print(cur_loc,wp)
+    r = bloating_r
+    while True:
+        x,_ = shortest_path(env,cur_loc,wp,K=1,d=2,
+                    existing_paths = [],
+                    bloating_r = r,local_plan_radius=1.5*bloating_r)
+        if x is not None:
+            break
+        r *= 0.9
+    return x[:,1]

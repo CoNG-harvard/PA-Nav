@@ -1,10 +1,12 @@
 import cvxpy as cp
 import numpy as np
-from panav.environment import line_seg_to_obstacle
+from panav.environment.utils import line_seg_to_obstacle,box_2d_center
+from shapely import LineString
+
 
 def shortest_path(env,start,goal,K=2,d=2,
                   existing_paths = [],
-                  bloating_r = 0.5):
+                  bloating_r = 0.5,goal_reach_eps = 0.5,local_plan_radius = None):
     M = 100 * np.max(np.abs(env.limits))
 
     x = cp.Variable((d, K+2))
@@ -12,7 +14,11 @@ def shortest_path(env,start,goal,K=2,d=2,
     constraints = []
 
     # Start and goal constraints
-    constraints+=[x[:,0] == start, x[:,-1] ==  goal]
+    # constraints+=[x[:,0] == start, x[:,-1] ==  goal]
+
+    constraints.append(start == x[:,0])
+    gl = box_2d_center(goal,np.ones(2) * goal_reach_eps)
+    constraints.append(gl.A @ x[:,-1] <= gl.b)
 
     # Boundary constraints
     constraints.append(x <= np.array(env.limits)[:,-1].reshape(-1,1) - bloating_r)
@@ -31,6 +37,10 @@ def shortest_path(env,start,goal,K=2,d=2,
             
 
     for O in obs:
+        if local_plan_radius is not None:
+            if O.verts.distance(LineString([start,goal]))>local_plan_radius:
+                continue
+
         A, b= O.A,O.b
 
         H = A @ x-(b+ np.linalg.norm(A,axis=1) * bloating_r).reshape(-1,1) # Bloating radius
@@ -47,6 +57,7 @@ def shortest_path(env,start,goal,K=2,d=2,
     obj_func = cp.sum([cp.norm(x[:,i]-x[:,i+1]) for i in range(x.shape[1]-1)])
     prob = cp.Problem(cp.Minimize(obj_func),constraints)
     val = prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
+    print(prob.status)
     return x.value, val
 
 def explore_multi_path(env, start, goal):
