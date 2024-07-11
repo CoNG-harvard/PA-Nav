@@ -31,7 +31,7 @@ def unique_tx(t,x):
         t: shape = K + 1
         x: shape = (d,K+1)
     '''
-    print('Before unique',t,x)
+    # print('Before unique',t,x)
     times,xs = np.array(t),np.array(x)
 
     unique_index = []
@@ -43,7 +43,7 @@ def unique_tx(t,x):
     times = times[unique_index]
     xs = xs[:,unique_index]
 
-    print('After unique',times,xs)
+    # print('After unique',times,xs)
     return times, xs
 
 def interpolate_positions(t,x,dt):
