@@ -59,13 +59,17 @@ class Box2DRegion(Region):
         self.verts = shapely.geometry.box(self.xlim[0],self.ylim[0],
                                     self.xlim[1],self.ylim[1])
     
+    def truncate(self,v,lb,ub):
+        if v<lb:
+            v = lb
+        elif v>ub:
+            v = ub
+        return v
+    
     def project(self,x):
-        xnew = np.array(x)
         
-        xnew[0] = max(self.xlim[0],xnew[0])
-        xnew[0] = min(self.xlim[1],xnew[0])
+        x0 = self.truncate(x[0],*self.xlim)
+       
+        x1 = self.truncate(x[1],*self.ylim)
         
-        xnew[1] = max(self.ylim[0],xnew[1])
-        xnew[1] = min(self.ylim[1],xnew[1])
-        
-        return xnew
+        return np.array([x0,x1])

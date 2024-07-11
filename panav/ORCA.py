@@ -223,9 +223,10 @@ class Ordered_Agent(ORCA_Agent):
 
         v = v_pref 
 
+        d_norm = [la.norm(d) for d in obstacle_d]
         agent_clear = np.all([(v-(self.v_opt+u)).dot(n) >= 0 for u,n in zip(us,ns)])
-        obstacle_clear = np.all([d.dot(v*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
-                      for d in obstacle_d])
+        obstacle_clear = np.all([d.dot(v*self.tau)/dn <= dn-self.bloating_r
+                      for d,dn in zip(obstacle_d,d_norm)])
 
         if agent_clear and obstacle_clear: # v_pref is already a feasible velocity.
             return v
@@ -238,8 +239,8 @@ class Ordered_Agent(ORCA_Agent):
         
         constraints = [(v-(self.v_opt+u)) @ n >= 0+0.05 for u,n in zip(us,ns)]
 
-        constraints += [d/np.linalg.norm(d) @ (v*self.tau)+0.05 <= (np.linalg.norm(d)-self.bloating_r)
-                      for d in obstacle_d]
+        constraints += [d/dn @ (v*self.tau)+0.05 <= dn-self.bloating_r
+                      for d,dn in zip(obstacle_d,d_norm)]
 
         # Maximum speed constraint
         constraints.append(cp.norm(v)<= self.vmax)
@@ -252,8 +253,8 @@ class Ordered_Agent(ORCA_Agent):
             # print('v_out',v_out)
             if v_out is not None:
                 agent_clear = np.all([(v_out-(self.v_opt+u)).dot(n) >= 0.0 for u,n in zip(us,ns)])
-                obstacle_clear = np.all([d.dot(v_out*self.tau)/np.linalg.norm(d) <= (np.linalg.norm(d)-self.bloating_r)
-                            for d in obstacle_d])
+                obstacle_clear = np.all([d.dot(v_out*self.tau)/dn <= dn-self.bloating_r
+                            for d,dn in zip(obstacle_d,d_norm)])
                 if not agent_clear or not obstacle_clear:
                     # print('Solver inaccuracy.','agent clear',agent_clear,'obstacle_clear',obstacle_clear)
                     raise Exception
@@ -262,7 +263,7 @@ class Ordered_Agent(ORCA_Agent):
                 # print('Problem status:',prob.status,'Agent',self.id)
                 raise Exception
             ########
-            if np.linalg.norm(v_out)<=self.vmin:
+            if la.norm(v_out)<=self.vmin:
                 print('Potential deadlock',self.id)
                 # Potential deadlock, engage the right-hand rule
                 for theta in np.pi * np.array([1/4,1/2,1,3/2]):

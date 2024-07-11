@@ -3,6 +3,7 @@ import numpy.linalg as la
 
 from panav.TrafficAwarePlanning import traffic_aware_HG_plan
 from panav.ORCA import Ordered_Agent
+from panav.environment.utils import box_2d_center
 
 from time import time
 
@@ -71,12 +72,12 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
         P = []
         C = []
 
-        # for nb in agents:
-        for nb in active_agents:
+        for nb in agents: # We cannot ignore retired agents but should still treat them as obstacles.
             # Find all agents in the that could collide with a in the next tau seconds.
-            if nb!=a and np.linalg.norm(orcas[nb].p-orcas[a].p)<orcas[nb].bloating_r+orcas[a].bloating_r\
+            dist = la.norm(orcas[nb].p-orcas[a].p)
+            if nb!=a and dist<orcas[nb].bloating_r+orcas[a].bloating_r\
                                                     + 2 * vmax * tau:
-                if np.linalg.norm(orcas[nb].p-orcas[a].p)<orcas[nb].bloating_r+orcas[a].bloating_r:
+                if dist<orcas[nb].bloating_r+orcas[a].bloating_r:
                     print("Soft Collision. Agents ",a,nb,"Dist",np.linalg.norm(orcas[nb].p-orcas[a].p))
                 if orcas[nb].v is None:
                     C.append(nb)
@@ -134,7 +135,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
             times[a].append(curr_t)
 
         # Check for waypoint reaching and tunnel occupancy
-        # for a in agents:
         for a in active_agents:
             if debug:
                 print('agent',a,'state',orcas[a].state)
@@ -201,7 +201,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
                     curr_wp_index[a] += 1 
         
         
-        # for a in agents:
         for a in active_agents:
             # Compute the preferred velocity.
             calc_pref(a)         
@@ -216,7 +215,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
                 orcas[a].vmax = vmax # In tunnel, move quickly 
         
         
-        # for a in agents: 
         for a in active_agents:
             if orcas[a].v is None:
                 valid = PIBT(a)
@@ -228,7 +226,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
         # Execute the safe velocity.
         all_reached = True
         
-        # for a in agents:
         retired_agents = []
         for a in active_agents:
             dist2goal = np.linalg.norm(orcas[a].p - goal_locs[a])
