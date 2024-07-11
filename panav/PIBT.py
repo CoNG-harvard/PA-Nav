@@ -25,6 +25,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
 
     agents = np.arange(N)
 
+    active_agents = set(agents)
+
 
     v_prefs = [np.zeros(start_locs[0].shape) for a in agents]
 
@@ -69,7 +71,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
         P = []
         C = []
 
-        for nb in agents:
+        # for nb in agents:
+        for nb in active_agents:
             # Find all agents in the that could collide with a in the next tau seconds.
             if nb!=a and np.linalg.norm(orcas[nb].p-orcas[a].p)<orcas[nb].bloating_r+orcas[a].bloating_r\
                                                     + 2 * vmax * tau:
@@ -122,7 +125,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
 
     curr_t = 0
 
-    active_agents = set(agents)
     for _ in range(500):
         # if debug:
         if True:
