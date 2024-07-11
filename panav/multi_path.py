@@ -1,7 +1,7 @@
 import cvxpy as cp
 import numpy as np
 from panav.environment.utils import line_seg_to_obstacle,box_2d_center
-from shapely import LineString
+from shapely import LineString,Point
 
 
 def shortest_path(env,start,goal,K=2,d=2,
@@ -39,6 +39,9 @@ def shortest_path(env,start,goal,K=2,d=2,
     for O in obs:
         if local_plan_radius is not None:
             if O.verts.distance(LineString([start,goal]))>local_plan_radius:
+            # if O.verts.distance(Point(start))>local_plan_radius:
+            # to_obs = O.project(self.p) - self.p
+            # if la.norm(to_obs)<=self.vmax*self.tau+1.5*self.bloating_r: 
                 continue
 
         A, b= O.A,O.b
@@ -57,7 +60,7 @@ def shortest_path(env,start,goal,K=2,d=2,
     obj_func = cp.sum([cp.norm(x[:,i]-x[:,i+1]) for i in range(x.shape[1]-1)])
     prob = cp.Problem(cp.Minimize(obj_func),constraints)
     val = prob.solve(solver='GUROBI') # The Gurobi solver proves to be more accurate and also faster.
-    print(prob.status)
+    # print(prob.status)
     return x.value, val
 
 def explore_multi_path(env, start, goal):

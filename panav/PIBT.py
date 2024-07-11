@@ -248,9 +248,11 @@ def towards(cur_loc, wp, tau, vmax, env, bloating_r):
 
     no_conflict = True
     for obs in env.obstacles:
-        if obs.verts.distance(LineString([cur_loc,wp]))<bloating_r:
-            no_conflict = False
-            break
+        if la.norm(obs.project(cur_loc)-cur_loc)< 10*bloating_r:
+        # if O.verts.distance(LineString([start,goal]))>local_plan_radius:
+            if obs.verts.distance(LineString([cur_loc,wp]))<bloating_r:
+                no_conflict = False
+                break
 
     
     if no_conflict:
