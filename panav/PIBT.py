@@ -3,7 +3,6 @@ import numpy.linalg as la
 
 from panav.TrafficAwarePlanning import traffic_aware_HG_plan
 from panav.ORCA import Ordered_Agent
-from panav.environment.utils import box_2d_center
 
 from time import time
 
@@ -128,9 +127,9 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
 
     for _ in range(500):
         # if debug:
-        if True:
-            print("################# Time step {} ################".format(_))
-            print("Remaining agents",len(active_agents))
+        # if True:
+        #     print("################# Time step {} ################".format(_))
+        #     print("Remaining agents",len(active_agents))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)
@@ -270,7 +269,7 @@ def towards(cur_loc, wp, tau, vmax, env, bloating_r,simple_plan = True):
         if no_conflict:
             wp = wp
         else:
-            print('Planning using MILP')
+            # print('Planning using MILP')
             result = local_MILP_plan(env,obs_in_conflict,cur_loc,wp,vmax,bloating_r)
             if result is not None:
                 wp = result
@@ -279,9 +278,8 @@ def towards(cur_loc, wp, tau, vmax, env, bloating_r,simple_plan = True):
     return to_wp/tau if tau * vmax > np.linalg.norm(to_wp) else vmax *  to_wp/(np.linalg.norm(to_wp)+1e-5)
 
 
-from panav.SAMP.solvers import Tube_Planning
 def local_MILP_plan(env,obs_in_conflict,cur_loc,wp,vmax,bloating_r):
-    print(cur_loc,wp)
+    # print(cur_loc,wp)
     r = bloating_r
     while True:
         x,_ = shortest_path(env,obs_in_conflict,cur_loc,wp,K=1,d=2,

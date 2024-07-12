@@ -109,4 +109,3 @@ class ParametericCurve:
         alpha =  overshoot/cur_seg_length
 
         return (1-alpha) * self.p[:,seg] + alpha * self.p[:,seg+1]
-    

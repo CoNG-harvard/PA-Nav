@@ -202,8 +202,6 @@ class Room(DefaultEmtpyEnv):
         self.__construct_room__()
         self.calc_start_goal_regions()
 
-
-
     def remove_random_edge(G_in,drop_rate=0.2,max_iter = 50): 
         for _ in range(max_iter):
             G = nx.Graph(G_in)
@@ -347,3 +345,6 @@ class Room(DefaultEmtpyEnv):
                 start,goal = self.random_start_goal(self.dist_2_tunnel,self.dist_2_obs,self.dist_2_neighbor,self.start_goal_dist)
                 self.starts.append(start)
                 self.goals.append(goal)
+            
+            self.starts = np.array(self.starts)
+            self.goals = np.array(self.goals)

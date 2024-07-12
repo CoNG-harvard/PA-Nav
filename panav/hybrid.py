@@ -355,3 +355,14 @@ class WareHouseHG(HybridGraph):
         
         # Add soft edges to G
         self.add_edges_from(G_soft.edges(data=True))    
+
+
+from copy import deepcopy
+def reduced_agents_HG(HG,n):
+    assert(n<=len(HG.start_nodes))
+    hg = deepcopy(HG)
+    hg.start_nodes = hg.start_nodes[:n]
+    hg.goal_nodes = hg.goal_nodes[:n]
+    hg.env.starts = hg.env.starts[:n,:]
+    hg.env.goals = hg.env.goals[:n,:]
+    return hg
