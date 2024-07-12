@@ -130,6 +130,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
         # if debug:
         if True:
             print("################# Time step {} ################".format(_))
+            print("Remaining agents",len(active_agents))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)

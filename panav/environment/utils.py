@@ -46,17 +46,52 @@ def multi_tunnel_wall(n_tunnel,tunnel_width,y_min,y_max,wall_thickness=5, wall_x
             obstacles.append(box_2d_center(center,side))
         return obstacles
 
-def horizontal_multi_tunnel_wall(n_tunnel,tunnel_width,x_min,x_max,wall_thickness=5, wall_y_offset=0):
-        w = tunnel_width # Tunnel width
-        s = (x_max-x_min-w*n_tunnel)/(n_tunnel+1) # Spacing between tunnels
-
+def horizontal_multi_tunnel_wall(x_min,x_max,gap_x_locs,tunnel_width,wall_thickness=5, wall_y_offset=0):
         d = wall_thickness # Thickness of the wall
 
+        l = x_min
+            
         obstacles = []
-        for i in range(n_tunnel+1):
-            side = np.array([d,s])
-            center = np.array([wall_y_offset, x_max-s/2-i*(s+w)])
+
+        for i in range(len(gap_x_locs)+1):
+          
+            if i == len(gap_x_locs):
+                r = x_max
+            else:
+                r = gap_x_locs[i] - tunnel_width/2
+
+            
+            side = np.array([r-l, d])
+            center = np.array([(l + r)/2, wall_y_offset])
+            # print(side,center,l,r)
             obstacles.append(box_2d_center(center,side))
+            
+            l = r + tunnel_width
+
+        return obstacles
+
+def vertical_multi_tunnel_wall(y_min,y_max,gap_y_locs,tunnel_width,wall_thickness=5, wall_x_offset=0):
+        d = wall_thickness # Thickness of the wall
+
+        bottom = y_min
+            
+        obstacles = []
+
+        for i in range(len(gap_y_locs)+1):
+          
+            if i == len(gap_y_locs):
+                top = y_max
+            else:
+                top = gap_y_locs[i] - tunnel_width/2
+
+            
+            side = np.array([d,top-bottom])
+            center = np.array([wall_x_offset,(top + bottom)/2])
+            # print(side,center,l,r)
+            obstacles.append(box_2d_center(center,side))
+            
+            bottom = top + tunnel_width
+
         return obstacles
 
 def trajectory_to_temp_obstacles(t,xs,bloating_r):
