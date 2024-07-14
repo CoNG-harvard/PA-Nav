@@ -127,9 +127,9 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
 
     for _ in range(500):
         # if debug:
-        # if True:
-        #     print("################# Time step {} ################".format(_))
-        #     print("Remaining agents",len(active_agents))
+        if True:
+            print("################# Time step {} ################".format(_))
+            print("Remaining agents",len(active_agents))
         for a in agents:
             pos[a].append(np.array(orcas[a].p))
             times[a].append(curr_t)
@@ -248,6 +248,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True):
         curr_t += exec_tau
 
         if all_reached:
+            print('PIBT success')
             break
     
     return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
