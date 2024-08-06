@@ -68,13 +68,13 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
         # return path
 
     for e in HG.edges:
-        if HG.edges[e]['type'] == 'soft':
-            u,v = e
-            u_safeint_num = len(HG.nodes[u]['safe_intervals'])
-            v_safeint_num = len(HG.nodes[v]['safe_intervals'])
-            # For each pair of safe intervals between two edge endpoints, there is one possible soft path.            
-            HG.edges[e]['continuous_time'] = [[None for vi in range(v_safeint_num)] for ui in range(u_safeint_num)]
-            HG.edges[e]['continuous_path'] = [[None for vi in range(v_safeint_num)] for ui in range(u_safeint_num)]
+        # if HG.edges[e]['type'] == 'soft':
+        u,v = e
+        u_safeint_num = len(HG.nodes[u]['safe_intervals'])
+        v_safeint_num = len(HG.nodes[v]['safe_intervals'])
+        # For each pair of safe intervals between two edge endpoints, there is one possible soft path.            
+        HG.edges[e]['continuous_time'] = [[None for vi in range(v_safeint_num)] for ui in range(u_safeint_num)]
+        HG.edges[e]['continuous_path'] = [[None for vi in range(v_safeint_num)] for ui in range(u_safeint_num)]
 
     while not OPEN.empty():
         curr_fscore,(s,si) = OPEN.get() # Remove the s with the smallest gScore.
@@ -91,11 +91,13 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
                     continue
                 curr_t = gScore[(s,si)]
             
-                if HG.edges[s,u]['type'] == 'soft':
-                         # print('solving for edge', s,u,'curr_t',curr_t)        
+                # if HG.edges[s,u]['type'] == 'soft':  
+                if HG.edges[s,u]['type'] in ['soft','hard']:  
+
                     planner = Tube_Planning(HG.env, HG.node_loc(s),HG.node_loc(u),
                                             HG.vmax,HG.agent_radius,
-                                            t0 = curr_t, T_end_constraints= [u_safe_intervals[ui]] , ignore_finished_agents=True)
+                                            t0 = curr_t, T_end_constraints= [u_safe_intervals[ui]] , ignore_finished_agents=True,
+                                            K_max=12)
                     plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
                         
 
@@ -103,16 +105,38 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
                     if plan_result is None: # Infeasible. Could be that K value is low.
                         # print(s,u,"Continuous path in open space not found. Consider increasing K value.")
                     
-                        HG.edges[s,u]['continuous_time'][si][ui] = np.array([0,np.inf])
+                        # HG.edges[s,u]['continuous_time'][si][ui] = np.array([0,np.inf])
+                        continue
                     else:
                         tp,xp = plan_result
                         HG.edges[s,u]['continuous_path'][si][ui] = xp
                         HG.edges[s,u]['continuous_time'][si][ui] = tp-np.min(tp)
+                else:
+                    L,U = u_safe_intervals[ui]
+                    t_min = curr_t + HG.edges[s,u]['weight']/HG.vmax
+                    if t_min>U:
+                        continue
+                    else:
+                        
+                        HG.edges[s,u]['continuous_path'][si][ui] = np.array([HG.node_loc(s),HG.node_loc(u)]).T
+                        HG.edges[s,u]['continuous_time'][si][ui] = np.array([0,max(t_min,L)-curr_t])
+
+                travel_time = np.max(HG.edges[s,u]['continuous_time'][si][ui])
                     
-                    travel_time = np.max(HG.edges[s,u]['continuous_time'][si][ui])
-                    
-                elif HG.edges[s,u]['type']=='hard':
-                    travel_time = HG.edges[s,u]['weight']
+                # elif HG.edges[s,u]['type']=='hard':
+                
+                #     planner = Tube_Planning(HG.env, HG.node_loc(s),HG.node_loc(u),
+                #                     HG.vmax,HG.agent_radius,
+                #                     t0 = curr_t, T_end_constraints= [u_safe_intervals[ui]] , ignore_finished_agents=True)
+                #     plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
+                #     if plan_result is None:
+                #         continue
+                #     else:
+                #         tp,xp = plan_result
+                #         HG.edges[s,u]['continuous_path'] = xp
+                #         HG.edges[s,u]['continuous_time'] = tp-np.min(tp)
+                #         travel_time = np.max(tp-np.min(tp))
+                        
                         
                 # The rest is standard A*
                 if (u,ui) not in gScore.keys():
@@ -138,12 +162,12 @@ def graph_plan_to_continuous(go_plan,HG):
                 full_time.append(t1)
                 full_path.append(full_path[-1][:,-1][:,np.newaxis])
         else:
-            if HG.edges[u,v]['type'] == 'soft':
-                ct = HG.edges[u,v]['continuous_time'][ui][vi]
-                cp = HG.edges[u,v]['continuous_path'][ui][vi]
-            else:
-                ct = HG.edges[u,v]['continuous_time']
-                cp = HG.edges[u,v]['continuous_path']
+            # if HG.edges[u,v]['type'] == 'soft':
+            ct = HG.edges[u,v]['continuous_time'][ui][vi]
+            cp = HG.edges[u,v]['continuous_path'][ui][vi]
+            # else:
+            #     ct = HG.edges[u,v]['continuous_time']
+            #     cp = HG.edges[u,v]['continuous_path']
                 
             full_time.extend(list(ct[1:]+full_time[-1]))
             full_path.append(cp[:,1:])

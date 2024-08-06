@@ -27,12 +27,7 @@ class Tunnel:
         self.end_point_buffer = end_point_buffer
         # self.end_point_buffer = 0.3
 
-        self.end_points = [np.mean(face,axis=0)- p*self.end_point_buffer for face,p in zip(self.faces,self.perps)] # The end points of an hard edge. Set it to be slightly outside of the tunnel.
-        self.end_regions = [box_2d_center(ep, side = 0.1) for ep in self.end_points] # The waiting region around end points. Used in path planning.
-        
-        verts = np.array(face1+face2)
-        self.region = Polygon(verts[ConvexHull(verts).vertices,:])
-
+       
         self.waiting = {}
         self.passing = {}
         for i in range(len(self.faces)):
@@ -41,7 +36,16 @@ class Tunnel:
                 self.waiting[(i,j)]= []
                 self.passing[(j,i)]= []
                 self.passing[(i,j)]= []
-    
+        
+        self.__construct_tunnel__()
+        
+    def __construct_tunnel__(self):
+        self.end_points = [np.mean(face,axis=0)- p*self.end_point_buffer for face,p in zip(self.faces,self.perps)] # The end points of an hard edge. Set it to be slightly outside of the tunnel.
+        self.end_regions = [box_2d_center(ep, side = 0.1) for ep in self.end_points] # The waiting region around end points. Used in path planning.
+        
+        verts = np.array(self.faces[0]+self.faces[1])
+        self.region = Polygon(verts[ConvexHull(verts).vertices,:])
+
     def passable(self,ent_fid,ex_fid):
         return len(self.passing[(ex_fid,ent_fid)])==0 # No agent is passing the opposite direction
 

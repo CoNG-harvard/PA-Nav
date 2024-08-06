@@ -26,21 +26,40 @@ def sequential_planning(solver,env,vmax,bloating_r,TIMEOUT = 120):
     return continuous_plans
 
 import numpy as np
-from panav.HybridSIPP import HybridSIPP
-def sequential_HybridSIPP(HG,return_graph = False):
+# from panav.HybridSIPP import HybridSIPP
+from panav.HybridSIPP_new import HybridSIPP
+def sequential_HybridSIPP(HG,return_graph = False,Delta = 4.0):
     
     agents = np.arange(len(HG.start_nodes))
     graph_plans = []
     continuous_plans = []
 
+    U = {e:[] for e in HG.edges} # Edge traversal times
+    C = {s:[] for s in HG} # Node visit times
+
+    def update_traversal_records(U,C,gp):
+        
+        for s,t in range(gp):
+            C[s].append(t)
+        
+        k = len(gp)
+        for i in range(k-1):
+            s,t = gp[i]
+            sp,tp  = gp[i+1]
+            U[s,sp].append((t,tp))
+        return U,C
+            
+
     for a in agents:
         print(a)
-        result = HybridSIPP(HG,HG.start_nodes[a],HG.goal_nodes[a],graph_plans,continuous_plans)
+        result = HybridSIPP(HG,U,C,HG.start_nodes[a],HG.goal_nodes[a],continuous_plans,Delta)
         if result is not None:
             gp,cp = result
         else:
             print("Solver failed.")
-            return []
+            break
+
+        U,C = update_traversal_records(U,C,gp)
         graph_plans.append(gp)
         continuous_plans.append(cp)
 

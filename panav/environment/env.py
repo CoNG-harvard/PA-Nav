@@ -49,7 +49,9 @@ class DefaultEmtpyEnv(NavigationEnv):
         super().__init__(limits, [], start_locs, goal_locs)
 
 class MultiTunnelEnv(DefaultEmtpyEnv):
-    def __init__(self,n_tunnel, tunnel_width, limits=[(-10, 10), (-10, 10)], N_agent=6,wallthickness = 5.0):
+    def __init__(self,n_tunnel, tunnel_width, limits=[(-10, 10), (-10, 10)], 
+                 N_agent=6,
+                 wallthickness = 5.0):
         super().__init__(limits, N_agent)
         
         y_min,y_max = min(limits[1]),max(limits[1])

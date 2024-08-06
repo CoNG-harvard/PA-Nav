@@ -329,6 +329,8 @@ class Tube_Planning(SAMP_Base):
                 if np.isfinite(ub):
 
                     constraints.append(t[0,-1] - TM * (1-T_end_alpha[i])<=ub)
+                else:
+                    print('Infinite interval [{},inf]'.format(lb))
                 
             constraints.append(cp.sum(T_end_alpha)>=1)
 

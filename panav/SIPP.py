@@ -79,8 +79,8 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r,merge_node_edg
             vel = L/(t2-t1)
             # self_traverse_t = 2*np.sqrt(2)*bloating_r/vel
             # self_traverse_t = 3*bloating_r/vel
-            self_traverse_t = 4*bloating_r/vel
-            # self_traverse_t = 10*bloating_r/vel
+            # self_traverse_t = 4*bloating_r/vel
+            self_traverse_t = 6 * bloating_r/vel
             # print(self_traverse_t,"self_traverse_t)"
 
             '''
@@ -100,13 +100,11 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r,merge_node_edg
                 The SIPP only solves the problem given the safe intervals.
             '''
 
-            # The following are caused by agent touching the start and nodes when traversing the edge.
-            G.nodes[u]['unsafe_intervals'].append([t1,t1+self_traverse_t])
-            G.nodes[v]['unsafe_intervals'].append([t2-self_traverse_t,t2])
+            
             
             if get_edge_type(G,u,v) == 'hard': # Consider edge constraints only on hard edges.
                 
-                G.edges[v,u]['unsafe_intervals'].append([t1-L/v_max,t2]) # Constraint caused by opposing agents.
+                # G.edges[v,u]['unsafe_intervals'].append([t1-L/v_max,t2]) # Constraint caused by opposing agents.
 
                 
                 if v_max>=vel: # The agent chases the obstacle
@@ -115,6 +113,10 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r,merge_node_edg
                 else: # The obstacle chases the agent
                     gap_t = ((vel-v_max)*(t2-t1) + 2* bloating_r)/v_max
                     G.edges[u,v]['unsafe_intervals'].append([np.max([0,t1-gap_t]),t1])
+
+                # The following are caused by agent touching the start and nodes when traversing the edge.
+                G.nodes[u]['unsafe_intervals'].append([t1-self_traverse_t,t1+self_traverse_t])
+                G.nodes[v]['unsafe_intervals'].append([t1-self_traverse_t,t2+self_traverse_t])
 
         
 
@@ -130,6 +132,8 @@ def compute_safe_intervals(G,node_locs,obs_trans,v_max,bloating_r,merge_node_edg
             G.nodes[i]['unsafe_intervals'] = merge_intervals(G.nodes[i]['unsafe_intervals']+\
                                                              list(itertools.chain.from_iterable([G.edges[i,u]['unsafe_intervals'] for u in G[i]])))
         G.nodes[i]['safe_intervals'] = unsafe_to_safe( G.nodes[i]['unsafe_intervals'])
+    
+        # print('Node ',i,' Safe intervals:',  G.nodes[i]['safe_intervals'])
 
 
 

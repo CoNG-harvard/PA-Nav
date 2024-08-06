@@ -30,7 +30,8 @@ class HybridGraph(nx.DiGraph):
     def __init__(self, env, agent_radius,d = 2,  # Path planning parameters are hard coded for now.
                                         vmax = 1.0,
                                         tunnels = None,
-                                        construct_graph = True) -> None:
+                                        construct_graph = True,
+                                        tunnel_end_point_buffer = None) -> None:
         ''' 
             env: a panav.env.NavigationEnv object.
             agent_radius: double, the bloating radius of the agent. Used in tunnel detection.
@@ -50,17 +51,16 @@ class HybridGraph(nx.DiGraph):
         self.goal_nodes = []
         self.tunnel_nodes = []
         
-        # self.planner = StraightLinePlanner(env,agent_radius,vmax)
-        #  self.continuous_path_planner = self.planner.plan
-        # self.planner = Tube_Planning(self.env,None,None,vmax=vmax,bloating_r=agent_radius,d=d,K_max = 10)
-       
-        self.continuous_path_planner = partial(Tube_Planning, 
-                                        env = self.env, 
-                                        bloating_r = agent_radius, 
-                                        obs_trajectories=[], 
-                                        d = d,  # Path planning parameters are hard coded for now.
-                                        K = 3,
-                                        vmax = vmax)
+        self.planner = StraightLinePlanner(env,agent_radius,vmax)
+        self.continuous_path_planner = self.planner.plan
+        
+        # self.continuous_path_planner = partial(Tube_Planning, 
+        #                                 env = self.env, 
+        #                                 bloating_r = agent_radius, 
+        #                                 obs_trajectories=[], 
+        #                                 d = d,  # Path planning parameters are hard coded for now.
+        #                                 K = 3,
+        #                                 vmax = vmax)
         
         
         # print("Detecting tunnels")
@@ -68,6 +68,12 @@ class HybridGraph(nx.DiGraph):
             self.tunnels = detect_tunnels(env,agent_radius)
         else:
             self.tunnels = tunnels
+        
+        if tunnel_end_point_buffer is not None:
+            for i in range(len(self.tunnels)):
+                self.tunnels[i].end_point_buffer = tunnel_end_point_buffer
+                self.tunnels[i].__construct_tunnel__()
+        
 
         if construct_graph:
             # print("Constructing hybrid graph")
