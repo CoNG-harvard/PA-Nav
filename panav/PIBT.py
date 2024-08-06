@@ -11,9 +11,11 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
               tau = 1.0, # The safe time interval. Can be generously long.
               
               
-              exec_tau = 0.4    # The execution time of ORCA velocity.
+              exec_tau = 0.4,    # The execution time of ORCA velocity.
                                 # Should be much shorter than the safe interval tau.
                                 # Leaving a slight horizon margin helps avoid numerical inaccuracy in CVXPY optimization results.
+
+            exhaustive_search = True
               ):
     start_T = time()
 
@@ -75,20 +77,22 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
             print('PIBT TIMEOUT')
             return False
 
-        P = []
-        C = []
 
-        for nb in agents: # We cannot ignore retired agents but should still treat them as obstacles.
-            # Find all agents in the that could collide with a in the next tau seconds.
-            dist = la.norm(orcas[nb].p-orcas[a].p)
-            if nb!=a and dist<orcas[nb].bloating_r+orcas[a].bloating_r\
-                                                    + 2 * vmax * tau:
-                if dist<orcas[nb].bloating_r+orcas[a].bloating_r:
-                    print("Soft Collision. Agents ",a,nb,"Dist",np.linalg.norm(orcas[nb].p-orcas[a].p))
-                if orcas[nb].v is None:
-                    C.append(nb)
-                else:
-                    P.append(nb)
+        def find_C_P():
+            P = []
+            C = []
+            for nb in agents: # We cannot ignore retired agents but should still treat them as obstacles.
+                # Find all agents in the that could collide with a in the next tau seconds.
+                dist = la.norm(orcas[nb].p-orcas[a].p)
+                if nb!=a and dist<orcas[nb].bloating_r+orcas[a].bloating_r\
+                                                        + 2 * vmax * tau:
+                    if dist<orcas[nb].bloating_r+orcas[a].bloating_r:
+                        print("Soft Collision. Agents ",a,nb,"Dist",np.linalg.norm(orcas[nb].p-orcas[a].p))
+                    if orcas[nb].v is None:
+                        C.append(nb)
+                    else:
+                        P.append(nb)
+            return C,P
             
         candidate_v_pref = [] 
 
@@ -102,13 +106,18 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
                                     [np.sin(-theta),np.cos(-theta)]]).dot(v_p)
                 candidate_v_pref.append(v_right)
 
-        candidate_v_pref.append(np.array([0,0])) # Always have zero velocity as a candidate
+        candidate_v_pref.append(np.array([0.0,0.0])) # Always have zero velocity as a candidate
         
         for v_pref in candidate_v_pref:
             if debug:
                 print('agent',a,'v_pref',v_pref)
+
+            C,P = find_C_P()
+
             orcas[a].update_v(v_pref,HG.env.obstacles,[orcas[b] for b in P]) 
             if orcas[a].v is None:
+                if not exhaustive_search:
+                    orcas[a].v = orcas[a].v_opt = np.array([0,0]) # Assign invalidity with zero velocity to avoid exponential computational cost
                 return False
             
             children_valid = True
@@ -118,12 +127,16 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
                         print('Agent',a,' calling PIBT for agent', c)
                     children_valid = PIBT(c)
                     if not children_valid:
+                        print(r'Children {c} invalid')
                         break
             
             if children_valid:
                 return True
 
-        orcas[a].v = None
+        if exhaustive_search:
+            orcas[a].v = None
+        else:
+            orcas[a].v = orcas[a].v_opt = np.array([0.0,0.0]) # Assign invalidity with zero velocity to avoid exponential computational cost
         return False
     
     
@@ -163,9 +176,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
                 HG.edges[w,v]['type']=='hard' and\
                 la.norm(agent_loc-target_wp)<=entry_r and\
                 orcas[a].state in ['tunnel_waiting','free']:
-
-                # if _ == 6 and a == 4:
-                # print('Occupants of (0,1)',HG.edges[0,1]['occupants'], 'Occupants of (1,0)',HG.edges[1,0]['occupants'], 'Occupants for 0', HG.nodes[0]['occupant'],'Occupants for 1',HG.nodes[1]['occupant'])
                             
                 if len(HG.edges[v,w]['occupants'])==0 and HG.nodes[w]['occupant'] == None: 
                         HG.edges[w,v]['occupants'].add(a)

@@ -24,3 +24,27 @@ def sequential_planning(solver,env,vmax,bloating_r,TIMEOUT = 120):
         continuous_plans.append(p)
     
     return continuous_plans
+
+import numpy as np
+from panav.HybridSIPP import HybridSIPP
+def sequential_HybridSIPP(HG,return_graph = False):
+    
+    agents = np.arange(len(HG.start_nodes))
+    graph_plans = []
+    continuous_plans = []
+
+    for a in agents:
+        print(a)
+        result = HybridSIPP(HG,HG.start_nodes[a],HG.goal_nodes[a],graph_plans,continuous_plans)
+        if result is not None:
+            gp,cp = result
+        else:
+            print("Solver failed.")
+            return []
+        graph_plans.append(gp)
+        continuous_plans.append(cp)
+
+    if return_graph:
+        return continuous_plans,graph_plans
+    else:
+        return continuous_plans

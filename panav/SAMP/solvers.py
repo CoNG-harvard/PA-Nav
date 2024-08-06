@@ -17,11 +17,11 @@ class SAMP_Base:
         self.K_max = K_max
         self.K_INC  = 1
     
-    def plan(self,active_obstacles=[],obstacle_trajectories=[],lazy = True):
+    def plan(self,obstacle_trajectories=[],active_obstacles=[],lazy = True):
         if not lazy:
-            return self.plan_plain(active_obstacles,obstacle_trajectories)
+            return self.plan_plain(obstacle_trajectories=obstacle_trajectories,active_obstacles=active_obstacles)
         else:
-            return self.lazy_plan(obstacle_trajectories)
+            return self.lazy_plan(obstacle_trajectories=obstacle_trajectories)
 
       
     def lazy_plan(self, obstacle_trajectories=[], return_all=True):
@@ -42,13 +42,13 @@ class SAMP_Base:
             p = self.plan_plain(active_obstacles=active_obs,K_min=K_min)
            
             if p is None:
-                print('Problem becomes infeasible.')
+                print('MILP low-level encounters infeasibility.')
                 break
 
             p = unique_tx(*p)
             # conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, bloating_r)
             conflicted_obs = plan_obs_conflict(p, obstacle_trajectories, self.bloating_r, 
-                                               segments_only=True,return_all=return_all)
+                                               segments_only=True, return_all=return_all)
             if not conflicted_obs:
                 return p
             
@@ -58,11 +58,11 @@ class SAMP_Base:
             active_obs+=conflicted_obs
         return None
     
-    def plan_plain(self,active_obstacles=[],obstacle_trajectories = [],K_min = 1):
+    def plan_plain(self,obstacle_trajectories = [],active_obstacles=[],K_min = 1):
         
         self.K = K_min
         while self.K<=self.K_max:
-            p = self.plan_core(active_obstacles,obstacle_trajectories)
+            p = self.plan_core(obstacle_trajectories=obstacle_trajectories,active_obstacles=active_obstacles)
             # print(K,p)
             if p:
                 self.K = 1 # Reset self.K 
@@ -74,7 +74,7 @@ class SAMP_Base:
         self.K = 1 # Reset self.K
         return None 
     
-    def plan_core(self,active_obstacles=[],obstacles_trajectories=[]):
+    def plan_core(self,obstacles_trajectories=[],active_obstacles=[]):
             '''
                 active_obstacles: typically individual segments of moving obstacles.
                 obstacle_trajectories: typically entire trajectories of moving obstacles.
@@ -110,12 +110,12 @@ class Simple_MILP_Planning(SAMP_Base):
         self.ignore_finished_agents = ignore_finished_agents
 
     
-    def plan(self,active_obstacles=[],obstacle_trajectories=[]):
-        return self.plan_plain(active_obstacles,obstacle_trajectories)
+    def plan(self,obstacle_trajectories=[],active_obstacles=[]):
+        return self.plan_plain(obstacle_trajectories=obstacle_trajectories,active_obstacles=active_obstacles)
 
 
         
-    def plan_core(self,active_obstacles=[],obstacle_trajectories=[],solve_inplace = True):
+    def plan_core(self,obstacle_trajectories=[],active_obstacles=[],solve_inplace = True):
         '''
          active_obstacles: a list of tuples in the format ([lb,ub], O). 
                             Temporary obstacles.
@@ -273,7 +273,7 @@ class Tube_Planning(SAMP_Base):
 
 
     
-    def plan_core(self,active_obstacles=[],obstacle_trajectories=[],solve_inplace = True):
+    def plan_core(self,obstacle_trajectories=[], active_obstacles=[],solve_inplace = True):
         '''
             active_obstacles: obstacles in addition to those in obstacle_trajectories.
                               A list in the format of [
@@ -428,14 +428,14 @@ class Path_Tracking(Tube_Planning):
         self.max_dev = max_dev
     
 
-    def plan_core(self, active_obstacles=[], obstacle_trajectories=[], solve_inplace=True):
+    def plan_core(self, obstacle_trajectories=[], active_obstacles=[], solve_inplace=True):
         '''
             Planning to track the milestones while observing other tube planning constraints.
 
             For now, we don't require the milestones be followed in specific order. As long as they are all visited, we deem it okay.
         '''
         # Get the usual constraints from simple tube planning
-        t,x,constraints,_ = super().plan_core(active_obstacles, obstacle_trajectories, solve_inplace=False)
+        t,x,constraints,_ = super().plan_core(obstacle_trajectories=obstacle_trajectories, active_obstacles=active_obstacles, solve_inplace=False)
         
         # Add the path tracking loss
         if len(self.milestones)>0:

@@ -13,6 +13,7 @@ class NavigationEnv:
         self.starts = starts
         self.goals = goals
 
+
     def calc_start_goal_regions(self):
         # The following are for visualization only and not used in planning
         start_box_side = goal_box_side = 1.0
@@ -55,6 +56,8 @@ class MultiTunnelEnv(DefaultEmtpyEnv):
         obstacles = multi_tunnel_wall(n_tunnel,tunnel_width,y_min,y_max,wall_thickness=wallthickness)
 
         self.obstacles = obstacles
+
+        self.calc_start_goal_regions()
         
 class WareHouse(DefaultEmtpyEnv):
 

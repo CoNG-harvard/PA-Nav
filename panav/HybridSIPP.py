@@ -4,11 +4,12 @@ import numpy as np
 from queue import PriorityQueue
 from panav.SIPP import compute_safe_intervals, compute_edge_weights, interval_intersection, plan_to_transitions
 from panav.util import unique_tx
-from panav.SAMP.archaic import Tube_Planning, SA_MILP_Planning
+# from panav.SAMP.archaic import Tube_Planning
+from panav.SAMP.solvers import Tube_Planning
 from copy import deepcopy
 
 
-def HybridSIPP(HG_in,start,goal, obs_graph_paths, obs_continuous_paths):
+def HybridSIPP(HG_in,start,goal, obs_graph_paths=[], obs_continuous_paths=[]):
     '''
         HG_in: a networkx graph.
 
@@ -66,8 +67,6 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
         return [(s,t) for ((s,si),t) in path], unique_tx(*graph_plan_to_continuous(path,HG))
         # return path
 
-    path = []
-
     for e in HG.edges:
         if HG.edges[e]['type'] == 'soft':
             u,v = e
@@ -93,20 +92,12 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
                 curr_t = gScore[(s,si)]
             
                 if HG.edges[s,u]['type'] == 'soft':
-                         # print('solving for edge', s,u,'curr_t',curr_t)
-                    possible_K = list(range(1,12))
-                    for K in possible_K:     
-                        # print("K",K,"safe intervals",safe_intervals)
-                        # print("start",s,HG.node_loc(s),"end",u,HG.node_loc(u))
-                    
-                        plan_result = Tube_Planning(HG.env, 
-                                            HG.node_loc(s),HG.node_loc(u),HG.vmax,HG.agent_radius,
-                                            obs_continuous_paths,HG.d,
-                                            K,t0 = curr_t,
-                                            T_end_constraints= [u_safe_intervals[ui]] , ignore_finished_agents=True)
+                         # print('solving for edge', s,u,'curr_t',curr_t)        
+                    planner = Tube_Planning(HG.env, HG.node_loc(s),HG.node_loc(u),
+                                            HG.vmax,HG.agent_radius,
+                                            t0 = curr_t, T_end_constraints= [u_safe_intervals[ui]] , ignore_finished_agents=True)
+                    plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
                         
-                        if plan_result is not None:
-                            break
 
                     # print('plan_result',plan_result)
                     if plan_result is None: # Infeasible. Could be that K value is low.
@@ -119,7 +110,7 @@ def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
                         HG.edges[s,u]['continuous_time'][si][ui] = tp-np.min(tp)
                     
                     travel_time = np.max(HG.edges[s,u]['continuous_time'][si][ui])
-
+                    
                 elif HG.edges[s,u]['type']=='hard':
                     travel_time = HG.edges[s,u]['weight']
                         
