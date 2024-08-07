@@ -17,37 +17,85 @@ def HybridSIPP(HG_in,U,C,start,goal,obs_continuous_paths,Delta):
     
     return Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta)
 
-def compute_safe_intervals(HG,v,w,U,C,t0,Delta):
-    return []
+from panav.SIPP import merge_intervals, unsafe_to_safe
 
+def compute_safe_intervals(HG,v,w,U,C,tau,Delta,eps = 1e-3):
+    US = [] # Container for unsafe intervals
+    for t in C[w]:
+        US.append((t-Delta, t+Delta))
+
+    # print('v,w',(v,w),'tau',tau)
+    # print("US for {}:".format((v,w)),US)
+
+
+    if HG.edges[v,w]['type'] == 'hard':
+        for t1,t2 in U[w,v]: # The opposition scenario
+            if tau < t1 - Delta - np.linalg.norm(HG.node_loc(w)-HG.node_loc(v))/ HG.vmax - eps:
+                US.append((t1-Delta,np.inf))
+            elif tau < t2 + Delta - eps:
+                return [] # Conflict with opposing (t1,t2) traversal is not avoidable
+            else:
+                continue # tau >= t2 + Delta, the agent will always be safe 
+        for t1,t2 in U[v,w]: # Slow obstacle scenario
+            if tau < t1 - Delta - eps:
+                US.append((t2-Delta,np.inf)) 
+            elif tau < t1 + Delta - eps:
+                return [] 
+            else:
+                US.append((0,t2+Delta))
+    elif HG.nodes[w]['type'] == 'tunnel': # Pre-add surely infeasible intervals to entry time
+        for z in HG[w]:
+            if HG.edges[w,z]['type'] == 'hard':
+                for t1,t2 in U[z,w]: # The opposition scenario
+                    US.append((t1 - Delta - np.linalg.norm(HG.node_loc(w)-HG.node_loc(v))/ HG.vmax, t2 + Delta))
+                for t1,t2 in U[w,z]: # Slow obstacle scenario
+                    US.append((t1 - Delta,t1 + Delta)) 
+                        
+    US = merge_intervals(US)
+
+    return unsafe_to_safe(US)
+
+# class SearchNode:
+#     def __init__(self,v,g,f,parent,path) -> None:
+#         self.v = v
+#         self.g = g
+#         self.f = f
+#         self.parent = parent
+#         self.path = path
 def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
+    def SearchNode(v,g,f,parent,path):
+        return {"v":v,"g":g,"f":f,"parent":parent,"path":path}
     
     OPEN = PriorityQueue()
 
-    gScore = {start:0}
+    # gScore = {start:0}
     # gScore[(s,i)] keeps track of the travel time from the start node to 
     # the i'th safe interval of node s.
 
-    OPEN.put((hScore[start][goal],start))
+    TN_0 = SearchNode(start,0,hScore[start][goal], None, None)
+    OPEN.put((TN_0['f'],TN_0))
     # Items in the priority queue are in the form (gScore, item), sorted by value. 
     # The item with the smallest value is placed on top.
 
-    cameFrom = {}
-    def recover_path(final_st,cameFrom): # Helper function for recovering the agents' paths using the cameFrom dictionary.
-        g_plan = [(final_st,gScore[final_st])]
+    # cameFrom = {}
+    def recover_path(final_st): # Helper function for recovering the agents' paths using the cameFrom dictionary.
+        g_plan = []
         t_plan = []
         x_plan = []
         curr = final_st
-        while curr != start:
+        while curr['parent'] is not None:
             
-            curr,(tp,xp) = cameFrom[curr]
-            g_plan.append((curr,gScore[curr]))
+            g_plan.append((curr['v'],curr['g']))
+            
+            (tp,xp) = curr['path']
             t_plan.append(tp[1:])
             x_plan.append(xp[:,1:])
 
+            curr = curr['parent']
+
         g_plan.append((start,0))
         t_plan.append(0)
-        x_plan.append(HG.node_loc(start))
+        x_plan.append(HG.node_loc(start).reshape(-1,1))
 
         g_plan.reverse()
         t_plan.reverse()
@@ -62,28 +110,36 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
         # return path
 
     while not OPEN.empty():
-        _,v = OPEN.get() # Remove the s with the smallest f-score.
+        _,TN = OPEN.get() # Remove the s with the smallest f-score.
+        v = TN['v']                  
+        t0 = TN['g']
         if v == goal:
-            return recover_path(v,cameFrom)
-                  
+            return recover_path(TN)
+     
         for w in HG[v]:
-            t0 = gScore[v]
+            if goal not in hScore[w].keys(): # goal not reachable from w
+                continue
+            
             S = compute_safe_intervals(HG,v,w,U,C,t0,Delta)
             S.sort(key=lambda x: x[0]) # Sort the intervals by starting values.
- 
-            for lb,ub in S:     
-                if goal not in hScore[v].keys(): # goal not reachable from u
-                    continue
-                
+
+            # print("Safe intervals for ",(v,w),":",S)
+
+            soft_plan = False
+            if HG.edges[v,w]['type'] == 'soft':
+                soft_plan = True
+            # if HG.edges[v,w]['type'] == 'hard' and len(S) == 0:
+            #     S = [(0,np.inf)]
+            #     soft_plan = True
             
-                if HG.edges[v,w]['type'] == 'soft':  
+            for lb,ub in S:                 
+                if soft_plan:  
                     planner = Tube_Planning(HG.env, HG.node_loc(v),HG.node_loc(w),
                                             HG.vmax,HG.agent_radius,
                                             t0 = t0, T_end_constraints= [(lb,ub)] , ignore_finished_agents=True,
                                             K_max=12)
                     plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
                         
-
                     if plan_result is None: 
                         continue  # Impossible to safely arrive at w during (lb,ub)
                     else:
@@ -98,17 +154,17 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
                         
                                        
                 # The rest is standard A*
-                if w not in gScore.keys():
-                    gScore[w] = np.inf
-
                 t_K = np.max(tp)
-                if t_K < gScore[w]: # The A* update
-                    cameFrom[w] = (v,(tp,xp))
-                    gScore[w] = t_K
-                    fScore = t_K+hScore[w][goal]
-                    OPEN.put((fScore,w))
-                else:
-                    break  # At later (lb,ub), t_K only increases.
+                fScore = t_K + hScore[w][goal]
+                TN_new = SearchNode(w,t_K,fScore,TN, (tp,xp))
+                
+                try:
+                    OPEN.put((fScore,TN_new))
+                except Exception:
+                    pass # The exception will occur when two items with the same fScore and TN_new are in the queue
+                         # This is a benign error for PriorityQueue and we will ignore it.
+             
+
     return None
     
 

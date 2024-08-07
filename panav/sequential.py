@@ -28,7 +28,7 @@ def sequential_planning(solver,env,vmax,bloating_r,TIMEOUT = 120):
 import numpy as np
 # from panav.HybridSIPP import HybridSIPP
 from panav.HybridSIPP_new import HybridSIPP
-def sequential_HybridSIPP(HG,return_graph = False,Delta = 4.0):
+def sequential_HybridSIPP(HG,return_graph = False,Delta = 2.0):
     
     agents = np.arange(len(HG.start_nodes))
     graph_plans = []
@@ -39,7 +39,7 @@ def sequential_HybridSIPP(HG,return_graph = False,Delta = 4.0):
 
     def update_traversal_records(U,C,gp):
         
-        for s,t in range(gp):
+        for s,t in gp:
             C[s].append(t)
         
         k = len(gp)

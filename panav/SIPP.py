@@ -242,6 +242,7 @@ def merge_intervals(arr):
     
     # Sorting based on the increasing order
     # of the start intervals
+    arr = [list(x) for x in arr]
     arr.sort(key=lambda x: x[0])
  
     # Stores index of last element
