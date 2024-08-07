@@ -47,7 +47,7 @@ def compute_safe_intervals(HG,v,w,U,C,tau,Delta,eps = 1e-3):
         for z in HG[w]:
             if HG.edges[w,z]['type'] == 'hard':
                 for t1,t2 in U[z,w]: # The opposition scenario
-                    US.append((t1 - Delta - np.linalg.norm(HG.node_loc(w)-HG.node_loc(v))/ HG.vmax, t2 + Delta))
+                    US.append((t1 - Delta - np.linalg.norm(HG.node_loc(w)-HG.node_loc(z))/ HG.vmax, t2 + Delta))
                 for t1,t2 in U[w,z]: # Slow obstacle scenario
                     US.append((t1 - Delta,t1 + Delta)) 
                         
@@ -55,16 +55,14 @@ def compute_safe_intervals(HG,v,w,U,C,tau,Delta,eps = 1e-3):
 
     return unsafe_to_safe(US)
 
-# class SearchNode:
-#     def __init__(self,v,g,f,parent,path) -> None:
-#         self.v = v
-#         self.g = g
-#         self.f = f
-#         self.parent = parent
-#         self.path = path
+from itertools import count
+
 def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
     def SearchNode(v,g,f,parent,path):
         return {"v":v,"g":g,"f":f,"parent":parent,"path":path}
+
+    
+    unique = count()
     
     OPEN = PriorityQueue()
 
@@ -73,8 +71,9 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
     # the i'th safe interval of node s.
 
     TN_0 = SearchNode(start,0,hScore[start][goal], None, None)
-    OPEN.put((TN_0['f'],TN_0))
-    # Items in the priority queue are in the form (gScore, item), sorted by value. 
+    OPEN.put((TN_0['f'], next(unique), TN_0)) # next(unique) is needed here to avoid some none uniqueness issue for class PriorityQueue
+
+    # Items in the priority queue are in the form (fScore, item), sorted by value. 
     # The item with the smallest value is placed on top.
 
     # cameFrom = {}
@@ -110,7 +109,7 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
         # return path
 
     while not OPEN.empty():
-        _,TN = OPEN.get() # Remove the s with the smallest f-score.
+        _,_,TN = OPEN.get() # Remove the s with the smallest f-score.
         v = TN['v']                  
         t0 = TN['g']
         if v == goal:
@@ -158,10 +157,11 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
                 fScore = t_K + hScore[w][goal]
                 TN_new = SearchNode(w,t_K,fScore,TN, (tp,xp))
                 
-                try:
-                    OPEN.put((fScore,TN_new))
-                except Exception:
-                    pass # The exception will occur when two items with the same fScore and TN_new are in the queue
+                # try:
+                OPEN.put((fScore, next(unique), TN_new)) # next(unique) is needed here to avoid some none uniqueness issue for class PriorityQueue
+
+                # except Exception:
+                #     pass # The exception will occur when two items with the same fScore and TN_new are in the queue
                          # This is a benign error for PriorityQueue and we will ignore it.
              
 
