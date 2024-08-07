@@ -2,7 +2,7 @@ import itertools
 import networkx as nx
 import numpy as np
 from queue import PriorityQueue
-from panav.SIPP import compute_safe_intervals, plan_to_transitions
+from panav.SIPP import plan_to_transitions
 from panav.util import unique_tx
 # from panav.SAMP.archaic import Tube_Planning
 from panav.SAMP.solvers import Tube_Planning
@@ -10,126 +10,105 @@ from copy import deepcopy
 
 
 def HybridSIPP(HG_in,U,C,start,goal,obs_continuous_paths,Delta):
-    '''
-        HG_in: a networkx graph.
 
-        node_locs: a dict in the form {s:loc of s for s in HG}
-
-        start, goal: start and goal node(nodes in HG).
-       
-        obs_graph_paths: a list of (node, time)-lists [
-                                            [(node[i][0],t[i][0]),(node[i][1],t[i][1]),...,(node[i][k_i],t[i][k_i])]
-                                             for i = 1,2,...,nAgents   
-                                            ]
-       
-        obs_continuous_path: a list of tuples [(times,xs)] representing the continuous time-space paths of moving obstacles.
-
-
-        Output: a single-agent graph path on HG in the form of [(s_i,t_i) for i=0,1,2,3...], as well as its continuous space-time realization (t_out, x_out).
-    '''
     HG = deepcopy(HG_in)
-    node_locs = HG.node_locs()
-    
-    obs_graph_trans = list(itertools.chain.from_iterable([plan_to_transitions(g) for g in obs_graph_paths]))
-    compute_safe_intervals(HG,node_locs,obs_graph_trans,HG.vmax,HG.agent_radius,
-                           merge_node_edge_intervals=True) # We must set the merge flag to be True here.
-    
+
     hScore = dict(nx.shortest_path_length(deepcopy(HG_in),weight = 'weight'))
     
-    return Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore)
+    return Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta)
 
+def compute_safe_intervals(HG,v,w,U,C,t0,Delta):
+    return []
 
-def Hybrid_SIPP_core(HG,start,goal,obs_continuous_paths,hScore):
+def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta):
     
     OPEN = PriorityQueue()
 
-    gScore = {(start,0):0}
+    gScore = {start:0}
     # gScore[(s,i)] keeps track of the travel time from the start node to 
     # the i'th safe interval of node s.
 
-    OPEN.put((0,(start,0)))
+    OPEN.put((hScore[start][goal],start))
     # Items in the priority queue are in the form (gScore, item), sorted by value. 
     # The item with the smallest value is placed on top.
 
     cameFrom = {}
     def recover_path(final_st,cameFrom): # Helper function for recovering the agents' paths using the cameFrom dictionary.
-        path = []
+        g_plan = [(final_st,gScore[final_st])]
+        t_plan = []
+        x_plan = []
         curr = final_st
-        while curr[0] != start:
-            path.append((curr,gScore[curr]))
-            curr = cameFrom[curr]
+        while curr != start:
+            
+            curr,(tp,xp) = cameFrom[curr]
+            g_plan.append((curr,gScore[curr]))
+            t_plan.append(tp[1:])
+            x_plan.append(xp[:,1:])
 
-        path.append(((start,0),gScore[(start,0)]))
-        path.reverse()
+        g_plan.append((start,0))
+        t_plan.append(0)
+        x_plan.append(HG.node_loc(start))
 
-        path = unique_graph_steps(path)
+        g_plan.reverse()
+        t_plan.reverse()
+        x_plan.reverse()
 
-        return [(s,t) for ((s,si),t) in path], unique_tx(*graph_plan_to_continuous(path,HG))
+        g_plan = unique_graph_steps(g_plan)
+
+        t_plan = np.hstack(t_plan)
+        x_plan = np.hstack(x_plan)
+        
+        return g_plan, unique_tx(t_plan,x_plan)
         # return path
 
-    for e in HG.edges:
-        # if HG.edges[e]['type'] == 'soft':
-        u,v = e
-        u_safeint_num = len(HG.nodes[u]['safe_intervals'])
-        v_safeint_num = len(HG.nodes[v]['safe_intervals'])
-        # For each pair of safe intervals between two edge endpoints, there is one possible soft path.            
-        HG.edges[e]['continuous_time'] = [[None for vi in range(v_safeint_num)] for ui in range(u_safeint_num)]
-        HG.edges[e]['continuous_path'] = [[None for vi in range(v_safeint_num)] for ui in range(u_safeint_num)]
-
     while not OPEN.empty():
-        curr_fscore,(s,si) = OPEN.get() # Remove the s with the smallest gScore.
-        if s == goal:
-            return recover_path((s,si),cameFrom)
+        _,v = OPEN.get() # Remove the s with the smallest f-score.
+        if v == goal:
+            return recover_path(v,cameFrom)
                   
-        for u in HG[s]:
-            u_safe_intervals = HG.nodes[u]['safe_intervals']
-            for ui in range(len(u_safe_intervals)):     
-                
-                if goal not in hScore[u].keys(): # goal not reachable from u
+        for w in HG[v]:
+            t0 = gScore[v]
+            S = compute_safe_intervals(HG,v,w,U,C,t0,Delta)
+            S.sort(key=lambda x: x[0]) # Sort the intervals by starting values.
+ 
+            for lb,ub in S:     
+                if goal not in hScore[v].keys(): # goal not reachable from u
                     continue
-                curr_t = gScore[(s,si)]
+                
             
-                if HG.edges[s,u]['type'] == 'soft':  
-                # if HG.edges[s,u]['type'] in ['soft','hard']:  
-
-                    planner = Tube_Planning(HG.env, HG.node_loc(s),HG.node_loc(u),
+                if HG.edges[v,w]['type'] == 'soft':  
+                    planner = Tube_Planning(HG.env, HG.node_loc(v),HG.node_loc(w),
                                             HG.vmax,HG.agent_radius,
-                                            t0 = curr_t, T_end_constraints= [u_safe_intervals[ui]] , ignore_finished_agents=True,
+                                            t0 = t0, T_end_constraints= [(lb,ub)] , ignore_finished_agents=True,
                                             K_max=12)
                     plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
                         
 
-                    # print('plan_result',plan_result)
-                    if plan_result is None: # Infeasible. Could be that K value is low.
-                        # print(s,u,"Continuous path in open space not found. Consider increasing K value.")
-                    
-                        # HG.edges[s,u]['continuous_time'][si][ui] = np.array([0,np.inf])
-                        continue
+                    if plan_result is None: 
+                        continue  # Impossible to safely arrive at w during (lb,ub)
                     else:
                         tp,xp = plan_result
-                        HG.edges[s,u]['continuous_path'][si][ui] = xp
-                        HG.edges[s,u]['continuous_time'][si][ui] = tp-np.min(tp)
                 else:
-                    L,U = u_safe_intervals[ui]
-                    t_min = curr_t + HG.edges[s,u]['weight']/HG.vmax
-                    if t_min>U:
-                        continue
+                    t_min = t0 + HG.edges[v,w]['weight']/HG.vmax
+                    if t_min>ub:
+                        continue  # Impossible to safely arrive at w during (lb,ub)
                     else:
-                        HG.edges[s,u]['continuous_path'][si][ui] = np.array([HG.node_loc(s),HG.node_loc(u)]).T
-                        HG.edges[s,u]['continuous_time'][si][ui] = np.array([0,max(t_min,L)-curr_t])
-
-                travel_time = np.max(HG.edges[s,u]['continuous_time'][si][ui])
-                    
+                        tp = np.array([t0,max(t_min,lb)])
+                        xp = np.array([HG.node_loc(v),HG.node_loc(w)]).T
+                        
                                        
                 # The rest is standard A*
-                if (u,ui) not in gScore.keys():
-                    gScore[(u,ui)] = np.inf
+                if w not in gScore.keys():
+                    gScore[w] = np.inf
 
-                if gScore[(s,si)] + travel_time < gScore[(u,ui)]: # The A* update
-                    cameFrom[(u,ui)] = (s,si)
-                    gScore[(u,ui)] = gScore[(s,si)] + travel_time
-                    fScore = gScore[(u,ui)]+hScore[u][goal]
-                    OPEN.put((fScore,(u,ui)))
+                t_K = np.max(tp)
+                if t_K < gScore[w]: # The A* update
+                    cameFrom[w] = (v,(tp,xp))
+                    gScore[w] = t_K
+                    fScore = t_K+hScore[w][goal]
+                    OPEN.put((fScore,w))
+                else:
+                    break  # At later (lb,ub), t_K only increases.
     return None
     
 
