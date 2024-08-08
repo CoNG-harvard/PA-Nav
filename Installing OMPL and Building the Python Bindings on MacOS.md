@@ -116,7 +116,7 @@ make -j $N_cores py_ompl
 
 This process also takes a while. The result after running this command is that a series of `.so` file will be generated, which are binaries that contains C++ class information. The `.so` files include `_base.so`, `_util.so`, `_geometric.so`, etc. 
 
-These `.so` files are saved to the build folder, and also copied to the corresponding subfolders under `ompl/py-bindings/ompl`. 
+These `.so` files are saved to the build folder, and also copied to the corresponding subfolders under `ompl/py-bindings/ompl`. The Python scripts that were already in `ompl/py-bindings/ompl` have the ability to load the `.so` files, and substantiate them into Python classes.
 
 Now, the folder `ompl/py-bindings/ompl` can be treated as a regular Python module and imported in to regular Python scripts.
 
