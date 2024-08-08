@@ -6,11 +6,12 @@ Platform: M1 Mac, MacOS 13.0 Venture
 References: 
 
 - OMPL installation guide (very brief): https://ompl.kavrakilab.org/installation.html
+- OMPL Python Binding Information: https://ompl.kavrakilab.org/python.html
 - OMPL Github: https://github.com/ompl/ompl
 
 # Install dependencies from Homebrew
 
-The most important dependencies are cmake, boost-python3, castxml, and Eigen, which are needed to build the C++ modules. 
+The most important dependencies to build the package are cmake, boost-python3, castxml, and Eigen. 
 
 Typically, you will have the latest version of cmake ready on MacOS. Otherwise  you may install it from brew
 
@@ -105,11 +106,25 @@ When finished, the Python bindings will be located in the folder of
 ompl/build/Release/py-bindings/bindings
 ```
 
-# Using the bindings in Python
+# Build the Python Modules
 
-Copy the `ompl/build/Release/py-bindings/bindings` folder to your own Python repo, and change the name of the folder from ``bindings`` to ``omplpy``. Then you may treat the current ``omplpy`` folder as a regular Python package, and import OMPL libraries normally in Python in the following style
+The bindings cannot be directly used in Python yet. We must convert them into Python modules by running
+
+```sh
+make -j $N_cores py_ompl
+```
+
+This process also takes a while. The result after running this command is that a series of `.so` file will be generated, which are binaries that contains C++ class information. The `.so` files include `_base.so`, `_util.so`, `_geometric.so`, etc. 
+
+These `.so` files are saved to the build folder, and also copied to the corresponding subfolders under `ompl/py-bindings/ompl`. 
+
+Now, the folder `ompl/py-bindings/ompl` can be treated as a regular Python module and imported in to regular Python scripts.
+
+# Using OMPL in Python
+
+Copy the folder `ompl/py-bindings/ompl` to your own Python repo. Then you may treat the current ``ompl`` folder as a regular Python module, and import OMPL libraries normally in Python in the following style
 
 ```python
-from omplpy import base as ob
-from omplpy import geometric as og
+from ompl import base as ob
+space = ob.RealVectorStateSpace(2)
 ```
