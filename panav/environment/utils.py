@@ -149,3 +149,13 @@ def trajectory_to_tube_obstacles(times,xs,bloating_r):
         tube_obs.append(wp_to_tube_obstacle(times[k],times[k+1],
                                             xs[:,k],xs[:,k+1],bloating_r))
     return tube_obs
+
+from copy import deepcopy
+def reduced_agents_env(env_in,n_reduced):
+    env = deepcopy(env_in)
+
+    env.starts = env.starts[:n_reduced]
+    env.goals = env.goals[:n_reduced]
+    env.calc_start_goal_regions()
+
+    return env

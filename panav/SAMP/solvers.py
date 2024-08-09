@@ -110,8 +110,8 @@ class Simple_MILP_Planning(SAMP_Base):
         self.ignore_finished_agents = ignore_finished_agents
 
     
-    def plan(self,obstacle_trajectories=[],active_obstacles=[]):
-        return self.plan_plain(obstacle_trajectories=obstacle_trajectories,active_obstacles=active_obstacles)
+    # def plan(self,obstacle_trajectories=[],active_obstacles=[]):
+    #     return self.plan_plain(obstacle_trajectories=obstacle_trajectories,active_obstacles=active_obstacles)
 
 
         
