@@ -18,10 +18,8 @@ def sequential_planning(solver,env,vmax,bloating_r,TIMEOUT = 120,lazy = True):
         p = sol.plan(obstacle_trajectories = continuous_plans,lazy = lazy)    
 
         t_now = time()-t0
-        if p is None:
-            return None
-        if t_now>TIMEOUT: # Stop early if the run time has exceeded TIMEOUT
-            break
+        if p is None or t_now>TIMEOUT:
+            return None # Stop early if the run time has exceeded TIMEOUT
 
         continuous_plans.append(p)
         
