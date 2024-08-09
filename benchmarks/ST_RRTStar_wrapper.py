@@ -78,8 +78,12 @@ def ST_RRTStar_wrapper(env, start, goal, obstacle_trajectories, vmax, bloating_r
 
     return ts,xs
 
-def sequential_ST_RRTStar(env,vmax,bloating_r):
+def sequential_ST_RRTStar(env,vmax,bloating_r,return_cumu_times=False):
+    t0 = time()
+
     continuous_plans = []
+    cumu_times = []
+    
 
     for i in range(len(env.starts)):
         print('Planning for agent {}/{}'.format(i,len(env.starts)))
@@ -92,6 +96,7 @@ def sequential_ST_RRTStar(env,vmax,bloating_r):
             return None
 
         continuous_plans.append(p)
+        
     return continuous_plans
 
 

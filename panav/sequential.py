@@ -1,26 +1,47 @@
 
 from time import time
-def sequential_planning(solver,env,vmax,bloating_r,TIMEOUT = 120,lazy = True):
+import signal
+ 
+def timeout_handler(signum,frame):
+    print("Algorithm timeout")
+    raise TimeoutError("Timeout")
+def sequential_planning(solver,env,vmax,bloating_r,TIMEOUT = 120,lazy = True,return_cumu_times = False):
     '''
         Sequential MAMP using a given solver.
     '''
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(TIMEOUT)
+
     t0 = time()
+
+    cumulative_times = []
     continuous_plans = []
 
-    for i in range(len(env.starts)):
-        print('Planning for agent {}/{}'.format(i,len(env.starts)))
-        start = env.starts[i,:]
-        goal = env.goals[i,:]
-        
-        sol = solver(env,start,goal,vmax = vmax, bloating_r =  bloating_r)
-        p = sol.plan(obstacle_trajectories = continuous_plans,lazy = lazy)    
+    try:        
+        for i in range(len(env.starts)):
+            print('Planning for agent {}/{}'.format(i,len(env.starts)))
+            start = env.starts[i,:]
+            goal = env.goals[i,:]
+            
+            sol = solver(env,start,goal,vmax = vmax, bloating_r =  bloating_r)
+            p = sol.plan(obstacle_trajectories = continuous_plans,lazy = lazy)    
 
-        if time()-t0>TIMEOUT: # Stop early if the run time has exceeded TIMEOUT
-            return None
-        
-        if p is None:
-            return None
-        continuous_plans.append(p)
+            t_now = time()-t0
+            if p is None:
+                return None
+            if t_now>TIMEOUT or p is None: # Stop early if the run time has exceeded TIMEOUT
+                break
+
+            cumulative_times.append(t_now)
+            continuous_plans.append(p)
+    except TimeoutError:
+            print("Timeout")
+            signal.alarm(0)
+
+    
+    if return_cumu_times:
+        n_max = min(len(continuous_plans),len(cumulative_times))
+        return continuous_plans[:n_max], cumulative_times[:n_max]
     
     return continuous_plans
 
