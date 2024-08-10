@@ -177,7 +177,10 @@ class Room(DefaultEmtpyEnv):
                 dist_2_obs = 2.0,
                 dist_2_neighbor = 3.0,
                 start_goal_dist = 10.0,
-                N_agent=100):
+                N_agent=100,
+                starts_in = None,
+                goals_in = None
+                ):
         super().__init__()
         
         self.N_agent = N_agent
@@ -204,7 +207,7 @@ class Room(DefaultEmtpyEnv):
         self.dist_2_neighbor = dist_2_neighbor
         self.start_goal_dist = start_goal_dist
 
-        self.__construct_room__()
+        self.__construct_room__(starts=starts_in,goals=goals_in)
         self.calc_start_goal_regions()
 
     def remove_random_edge(G_in,drop_rate=0.2,max_iter = 50): 
@@ -227,10 +230,10 @@ class Room(DefaultEmtpyEnv):
         '''
         x_limits = self.limits[0]
         y_limits = self.limits[1]
-        if any([abs(test_pt[0]-x_limits[0]) < dist_2_obs,
-                abs(test_pt[0]-x_limits[1]) < dist_2_obs,
-                abs(test_pt[1]-y_limits[0]) < dist_2_obs,
-                abs(test_pt[1]-y_limits[1]) < dist_2_obs,
+        if any([test_pt[0] < x_limits[0] + dist_2_obs,
+                test_pt[0] > x_limits[1] - dist_2_obs,
+                test_pt[1] < y_limits[0] + dist_2_obs,
+                test_pt[1] > y_limits[1] - dist_2_obs,
         ]):
             return False
                 
@@ -250,9 +253,14 @@ class Room(DefaultEmtpyEnv):
                 return False
         return True
 
-    def random_feasible_point(self,tunnels,dist_2_tunnel,dist_2_obs,dist_2_neighbor,max_iter = 500):
+    def random_feasible_point(self,tunnels,
+                              dist_2_tunnel,
+                              dist_2_obs,
+                              dist_2_neighbor,
+                              max_iter = 500):
         for _ in range(max_iter):
-            test_pt = np.random.rand(2) * np.array([self.total_width,self.total_height]) + np.array([self.limits[0][0],self.limits[1][0]])
+            test_pt = np.random.rand(2) * np.array([self.total_width,self.total_height]) \
+                                        + np.array([self.limits[0][0],self.limits[1][0]])
             if self.point_feasible(tunnels,test_pt,dist_2_tunnel,dist_2_obs,dist_2_neighbor):
                 return test_pt
             
@@ -261,18 +269,22 @@ class Room(DefaultEmtpyEnv):
     def random_start_goal(self,dist_2_tunnel,dist_2_obs,dist_2_neighbor,start_goal_dist):
         max_iter = 500
 
-        candidate_start = self.random_feasible_point(self.tunnels,dist_2_tunnel,dist_2_obs,dist_2_neighbor)
-
-        
-
         for _ in range(max_iter):
-            candidate_goal = self.random_feasible_point(self.tunnels,dist_2_tunnel,dist_2_obs,dist_2_neighbor)
-            if np.linalg.norm(candidate_start-candidate_goal)>start_goal_dist:
-                return candidate_start,candidate_goal
+            candidate_start = self.random_feasible_point(self.tunnels,dist_2_tunnel,dist_2_obs,dist_2_neighbor)
+
+            if self.point_feasible(self.tunnels,candidate_start,dist_2_tunnel,dist_2_obs,dist_2_neighbor):
+                rand_theta = 2 * np.pi * np.random.rand()
+                candidate_goal = candidate_start + start_goal_dist * np.array([np.cos(rand_theta),np.sin(rand_theta)])
+            
+                # candidate_goal = self.random_feasible_point(self.tunnels,dist_2_tunnel,dist_2_obs,dist_2_neighbor)
+                # if np.linalg.norm(candidate_start-candidate_goal)>start_goal_dist:
+            
+                if self.point_feasible(self.tunnels,candidate_goal,dist_2_tunnel,dist_2_obs,dist_2_neighbor):
+                    return candidate_start,candidate_goal
         return None
 
     
-    def __construct_room__(self,edge_drop_rate=0.1):
+    def __construct_room__(self,edge_drop_rate=0.1,starts = None, goals = None):
         np.random.seed(8)
         G = nx.grid_2d_graph(self.n_col,self.n_row)
         G = Room.remove_random_edge(G,drop_rate=edge_drop_rate)
@@ -344,12 +356,19 @@ class Room(DefaultEmtpyEnv):
 
             self.tunnels = col_tunnels +  row_tunnels
 
-            self.starts = []
-            self.goals = []
-            for _ in range(self.N_agent):
-                start,goal = self.random_start_goal(self.dist_2_tunnel,self.dist_2_obs,self.dist_2_neighbor,self.start_goal_dist)
-                self.starts.append(start)
-                self.goals.append(goal)
-            
+            if starts is None or goals is None:    
+                self.starts = []
+                self.goals = []
+                for _ in range(self.N_agent):
+                    start,goal = self.random_start_goal(self.dist_2_tunnel,
+                                                        self.dist_2_obs,
+                                                        self.dist_2_neighbor,
+                                                        self.start_goal_dist)
+                    self.starts.append(start)
+                    self.goals.append(goal)
+            else:
+                self.starts = starts
+                self.goals = goals
+
             self.starts = np.array(self.starts)
             self.goals = np.array(self.goals)
