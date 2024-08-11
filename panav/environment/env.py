@@ -1,5 +1,5 @@
 import numpy as np
-from panav.environment.utils import box_2d_center,multi_tunnel_wall
+from panav.environment.utils import box_2d_center, multi_tunnel_wall, peripheral_start_goals
 from panav.tunnels import Tunnel
 
 
@@ -13,15 +13,12 @@ class NavigationEnv:
         self.starts = starts
         self.goals = goals
 
-
     def calc_start_goal_regions(self):
         # The following are for visualization only and not used in planning
         start_box_side = goal_box_side = 1.0
         self.start_regions = [box_2d_center(s,start_box_side) for s in self.starts]
         self.goal_regions = [box_2d_center(g,goal_box_side) for g in self.goals]
 
-      
-        
 class DefaultEmtpyEnv(NavigationEnv):
     def __init__(self, limits=[(-10.0,10.0),(-10.0,10.0)], N_agent = 6):
        
@@ -88,37 +85,7 @@ class WareHouse(DefaultEmtpyEnv):
         self.n_col = n_col
         self.n_row = n_row
 
-
-
-        def periperal_start_goals(limits,corner_padding_x,corner_padding_y,bloating_r,N_agent):
-            n_sides = [0] * 4
-
-            div = N_agent // 4
-            res = N_agent % 4
-            for i in range(4):
-                n_sides[i] = div + (res>0)
-                res -= 1
-
-            start_top, start_right, start_bottom, start_left = n_sides
-
-            top_starts = [np.array([x,limits[1][1]-corner_padding_y * 0.5 - bloating_r * 2]) for x in np.linspace(limits[0][0]+corner_padding_x + bloating_r,limits[0][1]-corner_padding_x-bloating_r,start_top)]
-            right_starts = [np.array([limits[0][1]-corner_padding_x * 0.5 - bloating_r * 2,y]) for y in np.linspace(limits[1][0]+corner_padding_y + bloating_r,limits[1][1]-corner_padding_y-bloating_r,start_right)]
-            bottom_starts = [np.array([x,limits[1][0]+corner_padding_y * 0.5 + bloating_r * 2]) for x in np.linspace(limits[0][0]+corner_padding_x + bloating_r,limits[0][1]-corner_padding_x-bloating_r,start_bottom)]
-            left_starts = [np.array([limits[0][0]+corner_padding_x * 0.5 + bloating_r * 2,y]) for y in np.linspace(limits[1][0]+corner_padding_y + bloating_r,limits[1][1]-corner_padding_y-bloating_r,start_left)]
-
-        
-            bottom_goals = [np.array([x,limits[1][0]+corner_padding_y * 0.5-bloating_r * 2]) for x,_ in top_starts][::-1]
-            left_goals = [np.array([limits[0][0]+corner_padding_x * 0.5-bloating_r * 2,y]) for _,y in right_starts][::-1]
-            top_goals = [np.array([x,limits[1][1]-corner_padding_y * 0.5+bloating_r * 2]) for x,_ in bottom_starts][::-1]
-            right_goals = [np.array([limits[0][1]-corner_padding_x * 0.5+bloating_r * 2,y]) for _,y in left_starts][::-1]
-
-            starts = np.array(top_starts + right_starts + bottom_starts + left_starts)
-            goals = np.array(bottom_goals + left_goals + top_goals + right_goals)
-            
-            return starts,goals
-        
-
-        self.starts, self.goals = periperal_start_goals(limits,corner_padding_x,corner_padding_y,bloating_r,N_agent)
+        self.starts, self.goals = peripheral_start_goals(limits,corner_padding_x,corner_padding_y,bloating_r,N_agent)
         
         self.calc_start_goal_regions()
 

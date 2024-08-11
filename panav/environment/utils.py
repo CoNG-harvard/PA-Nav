@@ -159,3 +159,31 @@ def reduced_agents_env(env_in,n_reduced):
     env.calc_start_goal_regions()
 
     return env
+
+
+def peripheral_start_goals(limits,corner_padding_x,corner_padding_y,bloating_r,N_agent):
+    n_sides = [0] * 4
+
+    div = N_agent // 4
+    res = N_agent % 4
+    for i in range(4):
+        n_sides[i] = div + (res>0)
+        res -= 1
+
+    start_top, start_right, start_bottom, start_left = n_sides
+
+    top_starts = [np.array([x,limits[1][1]-corner_padding_y * 0.5 - bloating_r * 2]) for x in np.linspace(limits[0][0]+corner_padding_x + bloating_r,limits[0][1]-corner_padding_x-bloating_r,start_top)]
+    right_starts = [np.array([limits[0][1]-corner_padding_x * 0.5 - bloating_r * 2,y]) for y in np.linspace(limits[1][0]+corner_padding_y + bloating_r,limits[1][1]-corner_padding_y-bloating_r,start_right)]
+    bottom_starts = [np.array([x,limits[1][0]+corner_padding_y * 0.5 + bloating_r * 2]) for x in np.linspace(limits[0][0]+corner_padding_x + bloating_r,limits[0][1]-corner_padding_x-bloating_r,start_bottom)]
+    left_starts = [np.array([limits[0][0]+corner_padding_x * 0.5 + bloating_r * 2,y]) for y in np.linspace(limits[1][0]+corner_padding_y + bloating_r,limits[1][1]-corner_padding_y-bloating_r,start_left)]
+
+
+    bottom_goals = [np.array([x,limits[1][0]+corner_padding_y * 0.5-bloating_r * 2]) for x,_ in top_starts][::-1]
+    left_goals = [np.array([limits[0][0]+corner_padding_x * 0.5-bloating_r * 2,y]) for _,y in right_starts][::-1]
+    top_goals = [np.array([x,limits[1][1]-corner_padding_y * 0.5+bloating_r * 2]) for x,_ in bottom_starts][::-1]
+    right_goals = [np.array([limits[0][1]-corner_padding_x * 0.5+bloating_r * 2,y]) for _,y in left_starts][::-1]
+
+    starts = np.array(top_starts + right_starts + bottom_starts + left_starts)
+    goals = np.array(bottom_goals + left_goals + top_goals + right_goals)
+    
+    return starts,goals
