@@ -20,13 +20,13 @@ class NavigationEnv:
         self.goal_regions = [box_2d_center(g,goal_box_side) for g in self.goals]
 
 class DefaultEmtpyEnv(NavigationEnv):
-    def __init__(self, limits=[(-10.0,10.0),(-10.0,10.0)], N_agent = 6):
+    def __init__(self, limits=[(-10.0,10.0),(-10.0,10.0)], N_agent = 6, goal_boundary_margin = 2.0):
        
 
         top, bottom = limits[1][1]-2.0,limits[1][0]+2.0
 
-        start_x_offset = abs(limits[0][0]) * 0.7
-        goal_x_offset = start_x_offset + 2.0
+        goal_x_offset = abs(limits[0][0]) - goal_boundary_margin
+        start_x_offset = goal_x_offset - 2.0
 
         if N_agent % 2 == 0:
             N1 = N2 = N_agent // 2
@@ -48,8 +48,9 @@ class DefaultEmtpyEnv(NavigationEnv):
 class MultiTunnelEnv(DefaultEmtpyEnv):
     def __init__(self,n_tunnel, tunnel_width, limits=[(-10, 10), (-10, 10)], 
                  N_agent=6,
-                 wallthickness = 5.0):
-        super().__init__(limits, N_agent)
+                 wallthickness = 5.0,
+                 goal_boundary_margin = 2.0):
+        super().__init__(limits, N_agent,goal_boundary_margin=goal_boundary_margin)
         
         y_min,y_max = min(limits[1]),max(limits[1])
         obstacles = multi_tunnel_wall(n_tunnel,tunnel_width,y_min,y_max,wall_thickness=wallthickness)
@@ -62,9 +63,12 @@ class WareHouse(DefaultEmtpyEnv):
 
     def __init__(self, limits=[(-10,10),(-10,10)], N_agent=6,
                  shelf_region_x_limit = [-5.0,5.0],shelf_region_y_limit = [-5.0,5.0],
-                 obs_x_margin = 3 * 0.5,obs_y_margin = 3 * 0.5,
+                 obs_x_margin = 3.9 * 0.5,obs_y_margin = 3.9 * 0.5,
                  n_col = 4,n_row = 4,
-                 corner_padding_x = 2.0,corner_padding_y = 2.0,bloating_r = 0.5):
+                 corner_padding_x = 2.0,
+                 corner_padding_y = 2.0,
+                 bloating_r = 0.5,
+                 tunnel_endpoint_buffer = 0.1):
         super().__init__(limits, N_agent)
    
         w = (shelf_region_x_limit[1] - shelf_region_x_limit[0] - (n_col-1)*obs_x_margin )/n_col
@@ -89,6 +93,8 @@ class WareHouse(DefaultEmtpyEnv):
         
         self.calc_start_goal_regions()
 
+        self.tunnel_endpoint_buffer = tunnel_endpoint_buffer
+
 
     def get_tunnels(self,separate_row_col = False):
 
@@ -98,7 +104,8 @@ class WareHouse(DefaultEmtpyEnv):
 
         for row in range(self.n_row-1):
             for col in range(self.n_col):
-                f1_lo = self.low_left_corner + np.array([col * (self.w + self.x_margin),self.h + row * (self.y_margin+self.h)])
+                f1_lo = self.low_left_corner + np.array([col * (self.w + self.x_margin),
+                                                         self.h + row * (self.y_margin+self.h)])
                 f1_hi = f1_lo + np.array([0,self.y_margin])
                 f1 = [f1_lo,f1_hi]
 
@@ -109,7 +116,8 @@ class WareHouse(DefaultEmtpyEnv):
 
                 n1 = f2_lo - f1_lo
                 n2 = -n1
-                col_tunnels[row].append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
+                col_tunnels[row].append(Tunnel(f1,n1,f2,n2,
+                                               end_point_buffer=self.tunnel_endpoint_buffer))
 
         for row in range(self.n_row):
             for col in range(self.n_col-1):
@@ -126,7 +134,8 @@ class WareHouse(DefaultEmtpyEnv):
                 n1 = f2_l - f1_l
                 n2 = -n1
 
-                row_tunnels[row].append(Tunnel(f1,n1,f2,n2,end_point_buffer=0.1))
+                row_tunnels[row].append(Tunnel(f1,n1,f2,n2,
+                                               end_point_buffer=self.tunnel_endpoint_buffer))
 
         if separate_row_col:
             return col_tunnels,row_tunnels
@@ -346,3 +355,35 @@ class Room(DefaultEmtpyEnv):
 
             self.starts = np.array(self.starts)
             self.goals = np.array(self.goals)
+
+
+
+from panav.environment.utils import peripheral_start_goals
+
+class OppositionSquare(NavigationEnv):
+        def __init__(self,limits,corner_padding_x,corner_padding_y,bloating_r,N_agent=0):
+            super().__init__(limits=limits)
+            self.starts, self.goals = peripheral_start_goals(limits,
+                                                        corner_padding_x,
+                                                        corner_padding_y,
+                                                        bloating_r,
+                                                        N_agent)
+            self.calc_start_goal_regions()
+
+class OppositionCircle(NavigationEnv):
+    def __init__(self,limits, center, outer_radius,inner_radius,N_agent):
+        # Circular Opposition with no obstacles
+
+        super().__init__(limits=limits)
+
+        thetas = np.arange(N_agent)/N_agent * 2 * np.pi
+        starts = inner_radius * np.vstack([np.cos(thetas),
+                                        np.sin(thetas)]).T + center
+
+        goals = outer_radius * np.vstack([np.cos(thetas+np.pi),
+                                        np.sin(thetas+np.pi)]).T + center
+
+
+        self.starts, self.goals = starts, goals
+        self.calc_start_goal_regions()
+        

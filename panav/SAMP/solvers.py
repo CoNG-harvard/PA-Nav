@@ -58,11 +58,13 @@ class SAMP_Base:
             active_obs+=conflicted_obs
         return None
     
-    def plan_plain(self,obstacle_trajectories = [],active_obstacles=[],K_min = 1):
+    def plan_plain(self,obstacle_trajectories = [],
+                   active_obstacles=[],K_min = 1):
         
         self.K = K_min
         while self.K<=self.K_max:
-            p = self.plan_core(obstacle_trajectories=obstacle_trajectories,active_obstacles=active_obstacles)
+            p = self.plan_core(obstacle_trajectories=obstacle_trajectories,
+                               active_obstacles=active_obstacles)
             # print(K,p)
             if p:
                 self.K = 1 # Reset self.K 
@@ -115,7 +117,9 @@ class Simple_MILP_Planning(SAMP_Base):
 
 
         
-    def plan_core(self,obstacle_trajectories=[],active_obstacles=[],solve_inplace = True):
+    def plan_core(self,
+                  obstacle_trajectories=[],
+                  active_obstacles=[],solve_inplace = True):
         '''
          active_obstacles: a list of tuples in the format ([lb,ub], O). 
                             Temporary obstacles.
@@ -261,19 +265,15 @@ class Tube_Planning(SAMP_Base):
         
         super().__init__(env,start,goal,bloating_r,vmax,K_max)
 
-         
-        
         self.d = d
         self.t0 = t0
 
         self.T_end_constraints = T_end_constraints
         self.ignore_finished_agents = ignore_finished_agents
         self.goal_reach_eps = goal_reach_eps if goal_reach_eps else bloating_r
-
-
-
     
-    def plan_core(self,obstacle_trajectories=[], active_obstacles=[],solve_inplace = True):
+    def plan_core(self,obstacle_trajectories=[], 
+                  active_obstacles=[],solve_inplace = True):
         '''
             active_obstacles: obstacles in addition to those in obstacle_trajectories.
                               A list in the format of [
@@ -374,8 +374,6 @@ class Tube_Planning(SAMP_Base):
         constraints.append(start == x[:,0])
         gl = box_2d_center(goal,np.ones(2) * self.goal_reach_eps)
         constraints.append(gl.A @ x[:,-1] <= gl.b)
-    
-
 
         # Static obstacle constraints
         for O in self.env.obstacles:
@@ -392,7 +390,6 @@ class Tube_Planning(SAMP_Base):
             constraints.append(cp.sum(alpha,axis = 0)>=1)
 
         tx = cp.vstack([t,x])
-        
 
         # print("tube_obs: ", len(tube_obs))
         
@@ -431,7 +428,9 @@ class Path_Tracking(Tube_Planning):
         self.max_dev = max_dev
     
 
-    def plan_core(self, obstacle_trajectories=[], active_obstacles=[], solve_inplace=True):
+    def plan_core(self, 
+                  obstacle_trajectories=[], 
+                  active_obstacles=[], solve_inplace=True):
         '''
             Planning to track the milestones while observing other tube planning constraints.
 

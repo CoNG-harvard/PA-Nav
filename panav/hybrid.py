@@ -63,6 +63,7 @@ class HybridGraph(nx.DiGraph):
         #                                 vmax = vmax)
         
         
+        
         # print("Detecting tunnels")
         if tunnels is None:
             self.tunnels = detect_tunnels(env,agent_radius)
@@ -374,3 +375,62 @@ def reduced_agents_HG(HG,n):
     hg.env.starts = hg.env.starts[:n,:]
     hg.env.goals = hg.env.goals[:n,:]
     return hg
+
+from panav.environment.env import MultiTunnelEnv, WareHouse, Room
+def MultiTunnelHG(n_tunnel, 
+                     tunnel_width,
+                     limits,
+                     bloating_r, 
+                     N_agent):
+    
+    env = MultiTunnelEnv(n_tunnel, 
+                     tunnel_width,
+                     limits, 
+                     N_agent,
+                     goal_boundary_margin=4*bloating_r)
+    HG = HybridGraph(env,bloating_r,tunnel_end_point_buffer=0.3)
+    to_remove = []
+    for e in HG.edges:
+        if HG.edges[e]['type']=='soft':
+            # HG.edges[e]['weight'] = 0
+            # pass
+            u,v = e
+            if HG.nodes[u]['type']== HG.nodes[v]['type']=='tunnel' and \
+                                    HG.nodes[u]['open_space_id'] == HG.nodes[v]['open_space_id']:
+                to_remove.append(e) # Remove the soft edges connecting two tunnel endpoints for this particular environment
+    for e in to_remove:
+        HG.remove_edge(*e)
+    return HG
+
+
+def WareHouseHGBuilder(limits, 
+                shelf_region_x_limit, 
+                shelf_region_y_limit,
+                n_col, n_row , 
+                corner_padding_x,corner_padding_y,bloating_r,
+                tunnel_endpoint_buffer,
+                N_agent):
+    env = WareHouse(limits = limits, 
+                    N_agent=N_agent, 
+                shelf_region_x_limit=shelf_region_x_limit, 
+                shelf_region_y_limit=shelf_region_y_limit,
+                n_col=n_col, n_row= n_row, 
+                corner_padding_x=corner_padding_x,corner_padding_y=corner_padding_y,
+                tunnel_endpoint_buffer=tunnel_endpoint_buffer
+                    )
+    HG = WareHouseHG(env,bloating_r)
+
+    return HG
+
+
+def RoomHGBuilder(n_col,n_row,cell_width,cell_height,wallthickness,gap_width,start_goal_dist,bloating_r,N_agent):
+        env = Room(n_col=n_col,
+                   n_row=n_row,
+                   cell_width=cell_width,
+                   cell_height=cell_height,
+                   wall_thickness=wallthickness,
+                   gap_width=gap_width,
+                   start_goal_dist=start_goal_dist,
+                   N_agent=N_agent)
+        HG = HybridGraph(env,agent_radius=bloating_r,tunnels=env.tunnels)
+        return HG
