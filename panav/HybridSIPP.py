@@ -70,9 +70,9 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
     
     OPEN = PriorityQueue()
 
-    # gScore = {start:0}
-    # gScore[(s,i)] keeps track of the travel time from the start node to 
-    # the i'th safe interval of node s.
+    gScore = {v:np.inf for v in HG}
+    gScore[start] = 0
+    # gScore[s] keeps track of the fastest travel time from the start node to node s.
 
     TN_0 = SearchNode(start,0,hScore[start][goal], None, None)
     OPEN.put((TN_0['f'], next(unique), TN_0)) # next(unique) is needed here to avoid some none uniqueness issue for class PriorityQueue
@@ -111,16 +111,22 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
         
         return g_plan, unique_tx(t_plan,x_plan)
         # return path
-
+    
     while not OPEN.empty():
         fsc,_,TN = OPEN.get() # Remove the s with the smallest f-score.
         v = TN['v']                  
         t0 = TN['g']
+        parent = None
+        if TN['parent'] is not None:
+            parent = TN['parent']['v']
         # print('v',v,'t0',t0,'h',fsc-t0)
         if v == goal:
             return recover_path(TN)
      
         for w in HG[v]:
+            if w == parent:
+                continue # Not creating loops
+
             if goal not in hScore[w].keys(): # goal not reachable from w
                 continue
             
@@ -142,9 +148,11 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
                 xp = np.array([HG.node_loc(v),HG.node_loc(w)]).T
 
                  # Check whether the two-point plan suffices
-                if soft_plan and\
+                if  soft_plan and\
                     plan_obs_conflict((tp,xp),obs_continuous_paths,HG.agent_radius):
-                        
+                        if Kmax<=0:
+                            continue # Kmax <=0 is a flag that indicates we don't engage MILP at all
+
                         # print('soft planning for',(v,w),
                         #       'edge type',HG.edges[v,w]['type'],
                         #     '(lb,ub)',(lb,ub))
@@ -159,48 +167,19 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
                             continue  # Impossible to safely arrive at w during (lb,ub)
                         else:
                             tp,xp = plan_result
-                else:
-                    pass
-                    # print('no need for soft planning at', (v,w),
-                    #       'edge type',HG.edges[v,w]['type'],
-                    #       '(lb,ub)',(lb,ub))
-
-
-                # if soft_plan:  
-                #     # print('soft plan')
-                #     planner = Tube_Planning(HG.env, HG.node_loc(v),HG.node_loc(w),
-                #                             HG.vmax,HG.agent_radius,
-                #                             t0 = t0, T_end_constraints= [(lb,ub)],
-                #                             ignore_finished_agents=True,
-                #                             K_max=Kmax)
-                #     plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
-                        
-                #     if plan_result is None: 
-                #         continue  # Impossible to safely arrive at w during (lb,ub)
-                #     else:
-                #         tp,xp = plan_result
-                # else:
-                #     t_min = t0 + HG.edges[v,w]['weight']/HG.vmax
-                #     if t_min>ub:
-                #         continue  # Impossible to safely arrive at w during (lb,ub)
-                #     else:
-                #         # print('hard plan')
-                #         tp = np.array([t0,max(t_min,lb)])
-                #         xp = np.array([HG.node_loc(v),HG.node_loc(w)]).T
-                        
                                        
                 # The rest is standard A*
                 t_K = np.max(tp)
-                fScore = t_K + hScore[w][goal]
-                TN_new = SearchNode(w,t_K,fScore,TN, (tp,xp))
-                
-                # try:
-                OPEN.put((fScore, next(unique), TN_new)) # next(unique) is needed here to avoid some none uniqueness issue for class PriorityQueue
 
-                # except Exception:
-                #     pass # The exception will occur when two items with the same fScore and TN_new are in the queue
-                         # This is a benign error for PriorityQueue and we will ignore it.
-             
+                if t_K < gScore[w]:
+                    gScore[w] = t_K
+
+                    fScore = t_K + hScore[w][goal]
+                    TN_new = SearchNode(w,t_K,fScore,TN, (tp,xp))
+                    
+                    OPEN.put((fScore, next(unique), TN_new)) # next(unique) is needed here to avoid some none uniqueness issue for class PriorityQueue
+
+                break # We already found a feasible passage. By going to a later (lb,ub) won't give us a lower g value.
 
     return None
     

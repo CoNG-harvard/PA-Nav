@@ -408,17 +408,19 @@ def MultiTunnelHG(n_tunnel,
 def WareHouseHGBuilder(limits, 
                 shelf_region_x_limit, 
                 shelf_region_y_limit,
+                obs_x_margin,obs_y_margin,
                 n_col, n_row , 
                 corner_padding_x,corner_padding_y,bloating_r,
                 tunnel_endpoint_buffer,
                 N_agent):
     env = WareHouse(limits = limits, 
                     N_agent=N_agent, 
-                shelf_region_x_limit=shelf_region_x_limit, 
-                shelf_region_y_limit=shelf_region_y_limit,
-                n_col=n_col, n_row= n_row, 
-                corner_padding_x=corner_padding_x,corner_padding_y=corner_padding_y,
-                tunnel_endpoint_buffer=tunnel_endpoint_buffer
+                    shelf_region_x_limit=shelf_region_x_limit, 
+                    shelf_region_y_limit=shelf_region_y_limit,
+                    obs_x_margin=obs_x_margin,obs_y_margin=obs_y_margin,
+                    n_col=n_col, n_row= n_row, 
+                    corner_padding_x=corner_padding_x,corner_padding_y=corner_padding_y,
+                    tunnel_endpoint_buffer=tunnel_endpoint_buffer
                     )
     HG = WareHouseHG(env,bloating_r)
 
