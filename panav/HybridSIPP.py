@@ -173,13 +173,18 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
 
                 if t_K < gScore[w]:
                     gScore[w] = t_K
-
                     fScore = t_K + hScore[w][goal]
                     TN_new = SearchNode(w,t_K,fScore,TN, (tp,xp))
-                    
                     OPEN.put((fScore, next(unique), TN_new)) # next(unique) is needed here to avoid some none uniqueness issue for class PriorityQueue
 
                 break # We already found a feasible passage. By going to a later (lb,ub) won't give us a lower g value.
+
+                # if t_K < gScore[w] * 2.0: # ECBS
+                #     fScore = t_K + hScore[w][goal]
+                #     TN_new = SearchNode(w,t_K,fScore,TN, (tp,xp))
+                #     OPEN.put((fScore, next(unique), TN_new)) # next(unique) is needed here to avoid some none uniqueness issue for class PriorityQueue
+                # else:
+                #     break # We already found a feasible passage. By going to a later (lb,ub) won't give us a lower g value.
 
     return None
     
