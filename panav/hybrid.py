@@ -381,12 +381,14 @@ def MultiTunnelHG(n_tunnel,
                      tunnel_width,
                      limits,
                      bloating_r, 
+                     wallthickness,
                      N_agent):
     
     env = MultiTunnelEnv(n_tunnel, 
                      tunnel_width,
                      limits, 
                      N_agent,
+                     wallthickness=wallthickness,
                      goal_boundary_margin=4*bloating_r)
     HG = HybridGraph(env,bloating_r,tunnel_end_point_buffer=0.3)
     to_remove = []
