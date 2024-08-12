@@ -112,3 +112,33 @@ def seg_conflict(ta,pa,tb,pb,ra,rb):
         or np.linalg.norm(u + ub * v)<= ra+rb 
         # The minimal distance is attained when t=lb or ub.
         # This happens when v=0, or v!=0 and t_star is outside (lb,ub)
+
+import shapely
+
+def path_conflicted_static_obs(env,path,bloating_r,return_all = True):
+    obs = []
+    n_waypoint = path.shape[-1]
+    # print(path)
+    for i in range(n_waypoint-1):
+        x1 = path[:,i]
+        x2 = path[:,i+1]
+        ob = line_conflicted_static_obs(env,x1,x2,bloating_r,return_all)
+        if ob:
+            if return_all:
+                obs += ob
+            else:
+                return ob
+    return obs
+def line_conflicted_static_obs(env,x1,x2,bloating_r,return_all = True):
+    '''
+        Output: static obstacles that intersect with the bloated line segment x1-x2 with bloating radius = bloating_r.
+    '''
+    l = shapely.LineString([x1,x2]) 
+    active_static_obs = []
+    for o in env.obstacles:
+        if l.distance(o.vertices())<bloating_r:
+            if not return_all:
+                return o
+            else:
+                active_static_obs.append(o)
+    return active_static_obs

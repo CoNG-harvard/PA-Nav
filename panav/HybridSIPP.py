@@ -19,7 +19,7 @@ def HybridSIPP(HG_in,U,C,start,goal,obs_continuous_paths,Delta,Kmax = 3):
 
     hScore = dict(nx.shortest_path_length(deepcopy(HG_in),weight = 'weight'))
     
-    return Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 3)
+    return Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = Kmax)
 
 from panav.SIPP import merge_intervals, unsafe_to_safe
 
@@ -141,9 +141,13 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
                 tp = np.array([t0,max(t_min,lb)])
                 xp = np.array([HG.node_loc(v),HG.node_loc(w)]).T
 
-                if soft_plan:
-                    # Check whether the two-point plan suffices
-                    if plan_obs_conflict((tp,xp),obs_continuous_paths,HG.agent_radius):
+                 # Check whether the two-point plan suffices
+                if soft_plan and\
+                    plan_obs_conflict((tp,xp),obs_continuous_paths,HG.agent_radius):
+                        
+                        # print('soft planning for',(v,w),
+                        #       'edge type',HG.edges[v,w]['type'],
+                        #     '(lb,ub)',(lb,ub))
                         planner = Tube_Planning(HG.env, HG.node_loc(v),HG.node_loc(w),
                                             HG.vmax,HG.agent_radius,
                                             t0 = t0, T_end_constraints= [(lb,ub)],
@@ -155,6 +159,11 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
                             continue  # Impossible to safely arrive at w during (lb,ub)
                         else:
                             tp,xp = plan_result
+                else:
+                    pass
+                    # print('no need for soft planning at', (v,w),
+                    #       'edge type',HG.edges[v,w]['type'],
+                    #       '(lb,ub)',(lb,ub))
 
 
                 # if soft_plan:  
