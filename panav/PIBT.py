@@ -9,13 +9,12 @@ from time import time
 def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
               max_iter = 500,
               tau = 1.0, # The safe time interval. Can be generously long.
-              
-              
               exec_tau = 0.4,    # The execution time of ORCA velocity.
                                 # Should be much shorter than the safe interval tau.
                                 # Leaving a slight horizon margin helps avoid numerical inaccuracy in CVXPY optimization results.
 
-            exhaustive_search = True
+            exhaustive_search = True,
+            ignore_inactive_agents =  True
               ):
     start_T = time()
 
@@ -81,7 +80,8 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
         def find_C_P():
             P = []
             C = []
-            for nb in agents: # We cannot ignore retired agents but should still treat them as obstacles.
+            AG = active_agents if ignore_inactive_agents else agents
+            for nb in AG: # We cannot ignore retired agents but should still treat them as obstacles.
                 # Find all agents in the that could collide with a in the next tau seconds.
                 dist = la.norm(orcas[nb].p-orcas[a].p)
                 if nb!=a and dist<orcas[nb].bloating_r+orcas[a].bloating_r\
@@ -127,7 +127,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
                         print('Agent',a,' calling PIBT for agent', c)
                     children_valid = PIBT(c)
                     if not children_valid:
-                        print(r'Children {c} invalid')
+                        print(f'Children {c} invalid')
                         break
             
             if children_valid:
@@ -170,7 +170,6 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
 
             if v is None and orcas[a].state == 'tunnel_waiting':
                 return [(np.array(ts),np.array(xs).T) for ts,xs in zip(times,pos)]
-
 
             if v is not None and\
                 HG.edges[w,v]['type']=='hard' and\
@@ -254,6 +253,7 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
                 # Reset all agent's v to be None
                 orcas[a].v = None
             else:
+                print('agent',a,'reached')
                 orcas[a].goal_reached = True
                 orcas[a].v = orcas[a].v_opt = np.array([0,0])
                 retired_agents.append(a) 
