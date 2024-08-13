@@ -390,7 +390,7 @@ def MultiTunnelHG(n_tunnel,
                      N_agent,
                      wallthickness=wallthickness,
                      goal_boundary_margin=4*bloating_r)
-    HG = HybridGraph(env,bloating_r,tunnel_end_point_buffer=0.5)
+    HG = HybridGraph(env,bloating_r,tunnel_end_point_buffer=bloating_r*2)
     to_remove = []
     for e in HG.edges:
         if HG.edges[e]['type']=='soft':

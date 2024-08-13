@@ -454,20 +454,7 @@ class VO:
                         proj = proj[:,np.argmin(dist_2_proj)]
                     
                     u = proj - test_pt
-                # else: # Always project to side boundaries
-                    # side_thetas = [self.center_theta-self.phi, 
-                    #                self.center_theta+self.phi]
-                    # sides = np.vstack([np.cos(side_thetas),np.sin(side_thetas)])
-
-                    # proj = sides.T.dot(test_pt) * sides # proj = [proj_1(a column vector), proj 2(a column vector)]
-
-                    # dist_2_proj = la.norm((proj.T - test_pt).T,axis = 0)
-
-                    # # true_proj = proj[:,np.argmin(dist_2_proj)]
-                    # true_proj = proj[:,0] # The right hand rule
-
-                    # u = true_proj - test_pt
-                elif zone == 1:
+                else: # Always project to side boundaries
                     side_thetas = [self.center_theta-self.phi, 
                                    self.center_theta+self.phi]
                     sides = np.vstack([np.cos(side_thetas),np.sin(side_thetas)])
@@ -476,10 +463,23 @@ class VO:
 
                     dist_2_proj = la.norm((proj.T - test_pt).T,axis = 0)
 
-                    true_proj = proj[:,np.argmin(dist_2_proj)]
+                    # true_proj = proj[:,np.argmin(dist_2_proj)]
+                    true_proj = proj[:,0] # The right hand rule
 
                     u = true_proj - test_pt
-                elif zone == 0:
-                    u = to_center/(la.norm(to_center))\
-                        * (self.r - la.norm(to_center))
+                # elif zone == 1:
+                #     side_thetas = [self.center_theta-self.phi, 
+                #                    self.center_theta+self.phi]
+                #     sides = np.vstack([np.cos(side_thetas),np.sin(side_thetas)])
+
+                #     proj = sides.T.dot(test_pt) * sides # proj = [proj_1(a column vector), proj 2(a column vector)]
+
+                #     dist_2_proj = la.norm((proj.T - test_pt).T,axis = 0)
+
+                #     true_proj = proj[:,np.argmin(dist_2_proj)]
+
+                #     u = true_proj - test_pt
+                # elif zone == 0:
+                #     u = to_center/(la.norm(to_center))\
+                #         * (self.r - la.norm(to_center))
         return u

@@ -7,7 +7,7 @@ from panav.ORCA import Ordered_Agent
 from time import time
 
 def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
-              max_iter = 300,
+              max_iter = 500,
               tau = 1.0, # The safe time interval. Can be generously long.
               exec_tau = 0.4,    # The execution time of ORCA velocity.
                                 # Should be much shorter than the safe interval tau.
