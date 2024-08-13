@@ -84,7 +84,9 @@ class SAMP_Base:
             raise NotImplementedError
 
 class Simple_MILP_Planning(SAMP_Base):
-    def __init__(self, env, start, goal, vmax = 1.0,bloating_r=0.5, d=2,K_max=10,t0=0,T_end_constraints = None,ignore_finished_agents=False) -> None:
+    def __init__(self, env, start, goal, 
+                 vmax = 1.0,bloating_r=0.5, 
+                 d=2,K_max=10,t0=0,T_end_constraints = None,ignore_finished_agents=False) -> None:
         '''
             Single-agent path planning via mixed-integer programming.
 
@@ -110,16 +112,33 @@ class Simple_MILP_Planning(SAMP_Base):
         self.t0 = t0
         self.T_end_constraints = T_end_constraints
         self.ignore_finished_agents = ignore_finished_agents
+        self.K = K_max
 
     
     # def plan(self,obstacle_trajectories=[],active_obstacles=[]):
     #     return self.plan_plain(obstacle_trajectories=obstacle_trajectories,active_obstacles=active_obstacles)
 
+        
+    def plan(self,obstacle_trajectories=[]):
+        self.K = 1
+        while self.K<=self.K_max:
+            p = self.plan_core(obstacle_trajectories=obstacle_trajectories)
+            # print(K,p)
+            if p:
+                self.K = 1 # Reset self.K 
+                return p
+            else: 
+                self.K += self.K_INC
 
+        # Solution not found even after exhausting all possible K.
+        self.K = 1 # Reset self.K
+        
+        return None
+      
         
     def plan_core(self,
                   obstacle_trajectories=[],
-                  active_obstacles=[],solve_inplace = True):
+                  solve_inplace = True):
         '''
          active_obstacles: a list of tuples in the format ([lb,ub], O). 
                             Temporary obstacles.
@@ -151,8 +170,8 @@ class Simple_MILP_Planning(SAMP_Base):
 
 
         obs = []
-        for o in active_obstacles:
-            obs.append(o)
+        # for o in active_obstacles:
+        #     obs.append(o)
 
         # Create temp_obstalces if needed
         for obs_t,obs_xs in obstacle_trajectories:
