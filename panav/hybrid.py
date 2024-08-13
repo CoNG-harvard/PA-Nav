@@ -436,5 +436,5 @@ def RoomHGBuilder(n_col,n_row,cell_width,cell_height,wallthickness,gap_width,sta
                    gap_width=gap_width,
                    start_goal_dist=start_goal_dist,
                    N_agent=N_agent)
-        HG = HybridGraph(env,agent_radius=bloating_r,tunnels=env.tunnels)
+        HG = HybridGraph(env,agent_radius=bloating_r,tunnels=env.tunnels,tunnel_end_point_buffer=bloating_r )
         return HG

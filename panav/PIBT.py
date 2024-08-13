@@ -7,7 +7,7 @@ from panav.ORCA import Ordered_Agent
 from time import time
 
 def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
-              max_iter = 500,
+              max_iter = 300,
               tau = 1.0, # The safe time interval. Can be generously long.
               exec_tau = 0.4,    # The execution time of ORCA velocity.
                                 # Should be much shorter than the safe interval tau.
@@ -62,7 +62,12 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
                 v = paths[a][curIdx+1]
                 
                 pw,pv = HG.node_loc(w),HG.node_loc(v)
-                wait_loc = pw + 0.8 * entry_r * (pw-pv)/la.norm(pw-pv+1e-5)
+                
+                
+                theta = np.pi/4
+                
+                wait_loc = pw + 0.8 * entry_r * np.array([[np.cos(theta),-np.sin(theta)],
+                                                          [np.sin(theta),np.cos(theta)]]) @ (pw-pv)/la.norm(pw-pv+1e-5)
 
                 # wait_loc = agent_loc + (np.random.rand(2)-0.5)*0# Temporary solution: prefer to stay at the current location when waiting.
                 v_prefs[agent] = towards(agent_loc,wait_loc,tau,vmax,HG.env,bloating_r,simple_plan)
