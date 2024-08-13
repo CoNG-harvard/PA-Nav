@@ -90,7 +90,7 @@ def PBS(env,vmax,bloating_r,
 
         conflict = MA_plan_conflict(solution,bloating_r) # Look for the first conflict.
         if not conflict:
-            return solution, cost
+            return solution
         else:
             (a1,a2) = conflict # Get the two agents involved in the conflict.
 
@@ -132,7 +132,7 @@ def PBS(env,vmax,bloating_r,
 
                 print("PBS Time Elapsed:", time()-t0)
                 if time()-t0>TIMEOUT:# Stop early if runtime exceeds TIMEOUT.
-                    return None,None
+                    return None
                 ########################################################################################################
 
                 if result is not None:
