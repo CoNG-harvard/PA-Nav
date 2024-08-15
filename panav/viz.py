@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry.polygon import Polygon
 from shapely.plotting import plot_polygon
 
-def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None,obs_alpha = 0.3):
+def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None,obs_alpha = 0.3,no_legend=False):
     '''
         env: the path planning environment.
 
@@ -58,7 +58,7 @@ def draw_env(env,paths=[],ax = None,show_agent_ID = False,path_color = None,obs_
     # Use a square aspect ratio
     ax.set_aspect('equal', adjustable='box')
 
-    if env.starts is not None or env.goals is not None:
+    if (env.starts is not None or env.goals is not None) and not no_legend:
         ax.legend()
 
 def draw_obstacle(o,ax,alpha = 0.3):
@@ -117,7 +117,7 @@ def draw_hybrid(HG,ax=None,paths = [],display_soft=False,display_node = True,sho
 
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
-def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_path_lines = True,displayAgentID = True):
+def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_path_lines = True,displayAgentID = True,no_legend=False):
     '''
         Animate multi-agent trajectories in the given env.
         
@@ -150,31 +150,34 @@ def animation(env,paths,bloating_r,dt,fig=None,ax=None,agent_discs = None,hide_p
 
     agent_ID_text = []
 
-    for a in agents:
-        agent_ID_text.append(\
-            ax.text(*paths[a][:,0],str(a),
-            ha='center',va='center'))
+    if displayAgentID:
+        for a in agents:
+            agent_ID_text.append(\
+                ax.text(*paths[a][:,0],str(a),
+                ha='center',va='center'))
 
         
     if hide_path_lines:
-        draw_env(env,[], ax)
+        draw_env(env,[], ax,no_legend=no_legend)
     else:
-        draw_env(env,paths, ax)
+        draw_env(env,paths, ax, no_legend=no_legend)
 
 
     def init_func():
         return agent_discs+agent_ID_text
 
     def animate(t):
-        for a,disc,txt in zip(agents,agent_discs,agent_ID_text):
+        for i, (a,disc) in enumerate(zip(agents,agent_discs)):
             if t<paths[a].shape[-1]:
                 disc.center = paths[a][0,t],paths[a][1,t]
-                txt.set_position((paths[a][0,t],paths[a][1,t]))
+                if displayAgentID:
+                    txt = agent_ID_text[i]
+                    txt.set_position((paths[a][0,t],paths[a][1,t]))
         ax.set_title("Time step {}".format(t))
         return agent_discs+agent_ID_text
 
     handles, labels = ax.get_legend_handles_labels()
-    if len(labels)>0:
+    if len(labels)>0 and not no_legend:
         ax.legend()
 
     anim = FuncAnimation(fig,animate,frames = max([p.shape[-1] for p in paths]),blit=True,interval = dt*1000)
