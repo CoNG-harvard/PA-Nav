@@ -52,7 +52,7 @@ def sequential_planning(solver,env,vmax,bloating_r,
 
 import numpy as np
 from panav.HybridSIPP import HybridSIPP
-def sequential_HybridSIPP(HG,return_graph = False,Delta = 2.0,Kmax = 3,return_on_failure=True):
+def sequential_HybridSIPP(HG,return_graph = False,Delta = 2.0, Kmax = 3,return_on_failure=True):
     
     agents = np.arange(len(HG.start_nodes))
     graph_plans = []
