@@ -11,7 +11,9 @@ from copy import deepcopy
 from panav.conflict import plan_obs_conflict
 
 
-def HybridSIPP(HG_in,U,C,start,goal,obs_continuous_paths,Delta,Kmax = 3):
+def HybridSIPP(HG_in,U,C,start,goal,obs_continuous_paths,Delta,
+               Kmax = 3,
+               data_record_dict = None):
     '''
         The Kmax for HybridSIPP has to be kept no more than 3 for this algorithm to be meaningfully efficient.
     '''
@@ -19,7 +21,9 @@ def HybridSIPP(HG_in,U,C,start,goal,obs_continuous_paths,Delta,Kmax = 3):
 
     hScore = dict(nx.shortest_path_length(deepcopy(HG_in),weight = 'weight'))
     
-    return Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = Kmax)
+    return Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,
+                            Kmax = Kmax,
+                            data_record_dict=data_record_dict)
 
 from panav.SIPP import merge_intervals, unsafe_to_safe
 
@@ -65,12 +69,14 @@ def compute_safe_intervals(HG,v,w,U,C,tau,Delta,eps = 1e-3):
 
 from itertools import count
 
-def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 3):
+def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,
+                     Kmax = 3,
+                     data_record_dict = None):
     def SearchNode(v,g,f,parent,path):
         return {"v":v,"g":g,"f":f,"parent":parent,"path":path}
 
-    soft_calls = 0
-    hard_calls = 0
+    MILP_calls = 0
+    straight_calls = 0
     
     unique = count()
     
@@ -127,6 +133,10 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
             parent = TN['parent']['v']
         # print('v',v,'t0',t0,'h',fsc-t0)
         if v == goal:
+            if data_record_dict is not None:
+                data_record_dict['MILP_calls'] = MILP_calls
+                data_record_dict['straight_calls'] = straight_calls
+                
             return recover_path(TN)
      
         for w in HG[v]:
@@ -139,12 +149,6 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
             S = compute_safe_intervals(HG,v,w,U,C,t0,Delta)
             S.sort(key=lambda x: x[0]) # Sort the intervals by starting values.
 
-            soft_plan = False
-            if HG.edges[v,w]['type'] == 'soft':
-                soft_plan = True
-            # if HG.edges[v,w]['type'] == 'hard' and len(S) == 0:
-            #     S = [(0,np.inf)]
-            #     soft_plan = True
             
             for lb,ub in S:         
                 # print('soft calls',soft_calls,'hard calls',hard_calls)
@@ -155,8 +159,8 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
                 xp = np.array([HG.node_loc(v),HG.node_loc(w)]).T
 
                  # Check whether the two-point plan suffices
-                if  soft_plan and\
-                    plan_obs_conflict((tp,xp),obs_continuous_paths,HG.agent_radius):
+                if HG.edges[v,w]['type'] == 'soft':
+                    if plan_obs_conflict((tp,xp),obs_continuous_paths,HG.agent_radius):
                         if Kmax<=0:
                             continue # Kmax <=0 is a flag that indicates we don't engage MILP at all
 
@@ -170,14 +174,15 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
                                             K_max=Kmax)
                         plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
 
-                        soft_calls += 1
+                        MILP_calls += 1
                             
                         if plan_result is None: 
                             continue  # Impossible to safely arrive at w during (lb,ub)
                         else:
                             tp,xp = plan_result
-                else:
-                    hard_calls += 1
+                    else:
+                        straight_calls += 1
+                
                                        
                 # The rest is standard A*
                 t_K = np.max(tp)
