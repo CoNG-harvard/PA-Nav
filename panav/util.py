@@ -53,7 +53,6 @@ def interpolate_positions(t,x,dt):
     '''
     pos = []
     times = []
-    # print(x.shape)
 
     for i in range(len(t)-1):
         n = int((t[i+1]-t[i])/dt)

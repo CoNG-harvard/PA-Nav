@@ -33,13 +33,16 @@ def compute_safe_intervals(HG,v,w,U,C,tau,Delta,eps = 1e-3):
 
 
     if HG.edges[v,w]['type'] == 'hard':
-        for t1,t2 in U[w,v]: # The opposition scenario
-            if tau < t1 - Delta - np.linalg.norm(HG.node_loc(w)-HG.node_loc(v))/ HG.vmax - eps:
-                US.append((t1-Delta,np.inf))
-            elif tau < t2 + Delta - eps:
-                return [] # Conflict with opposing (t1,t2) traversal is not avoidable
-            else:
-                continue # tau >= t2 + Delta, the agent will always be safe 
+        
+        if (w,v) in U:
+            for t1,t2 in U[w,v]: # The opposition scenario
+                if tau < t1 - Delta - np.linalg.norm(HG.node_loc(w)-HG.node_loc(v))/ HG.vmax - eps:
+                    US.append((t1-Delta,np.inf))
+                elif tau < t2 + Delta - eps:
+                    return [] # Conflict with opposing (t1,t2) traversal is not avoidable
+                else:
+                    continue # tau >= t2 + Delta, the agent will always be safe 
+
         for t1,t2 in U[v,w]: # Slow obstacle scenario
             if tau < t1 - Delta - eps:
                 US.append((t2-Delta,np.inf)) 
@@ -47,6 +50,7 @@ def compute_safe_intervals(HG,v,w,U,C,tau,Delta,eps = 1e-3):
                 return [] 
             else:
                 US.append((0,t2+Delta))
+
     elif HG.nodes[w]['type'] == 'tunnel': # Pre-add surely infeasible intervals to entry time
         for z in HG[w]:
             if HG.edges[w,z]['type'] == 'hard':
@@ -65,6 +69,8 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
     def SearchNode(v,g,f,parent,path):
         return {"v":v,"g":g,"f":f,"parent":parent,"path":path}
 
+    soft_calls = 0
+    hard_calls = 0
     
     unique = count()
     
@@ -141,6 +147,7 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
             #     soft_plan = True
             
             for lb,ub in S:         
+                # print('soft calls',soft_calls,'hard calls',hard_calls)
                 t_min = t0 + HG.edges[v,w]['weight']/HG.vmax
                 if t_min>ub:
                     continue  # Impossible to safely arrive at w during (lb,ub)        
@@ -162,11 +169,15 @@ def Hybrid_SIPP_core(HG,U,C,start,goal,obs_continuous_paths,hScore,Delta,Kmax = 
                                             ignore_finished_agents=True,
                                             K_max=Kmax)
                         plan_result = planner.plan(obstacle_trajectories=obs_continuous_paths)
+
+                        soft_calls += 1
                             
                         if plan_result is None: 
                             continue  # Impossible to safely arrive at w during (lb,ub)
                         else:
                             tp,xp = plan_result
+                else:
+                    hard_calls += 1
                                        
                 # The rest is standard A*
                 t_K = np.max(tp)

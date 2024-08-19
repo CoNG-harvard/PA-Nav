@@ -82,7 +82,7 @@ def draw_goal(o,ax,label = ''):
     return np.mean(x[1:]),np.mean(y[1:])
 
 
-def draw_hybrid(HG,ax=None,paths = [],display_soft=False,display_node = True,show_agent_ID = False):
+def draw_hybrid(HG,ax=None,paths = [],display_soft=False,display_node = True,show_agent_ID = False,obs_alpha = 1.0):
     '''
         HG: a HybridGraph object.
     '''
@@ -93,7 +93,7 @@ def draw_hybrid(HG,ax=None,paths = [],display_soft=False,display_node = True,sho
         plot_polygon(tunnel.region,ax=ax,label='Tunnel' if not labeled else None,add_points =False)
         labeled=True
 
-    draw_env(HG.env,paths=paths,ax=ax,show_agent_ID=show_agent_ID)
+    draw_env(HG.env,paths=paths,ax=ax,show_agent_ID=show_agent_ID,obs_alpha=obs_alpha)
 
     soft_labeled = False
     hard_labeled = False

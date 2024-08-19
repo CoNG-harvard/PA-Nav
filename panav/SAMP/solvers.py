@@ -42,7 +42,7 @@ class SAMP_Base:
             p = self.plan_plain(active_obstacles=active_obs,K_min=K_min)
            
             if p is None:
-                print('MILP low-level encounters infeasibility.')
+                # print('MILP low-level encounters infeasibility.')
                 break
 
             p = unique_tx(*p)
@@ -65,7 +65,7 @@ class SAMP_Base:
         while self.K<=self.K_max:
             p = self.plan_core(obstacle_trajectories=obstacle_trajectories,
                                active_obstacles=active_obstacles)
-            # print(K,p)
+            # print(self.K,p)
             if p:
                 self.K = 1 # Reset self.K 
                 return p
@@ -252,7 +252,6 @@ class Simple_MILP_Planning(SAMP_Base):
         if not solve_inplace:
             return t,x,constraints,prob
         else:
-            # print('number of integer constraints:',count_interger_var(prob))
             prob.solve(solver='GUROBI',TimeLimit = 100) # The Gurobi solver proves to be more accurate and also faster.
             if prob.status != 'optimal':
                 return None
@@ -359,7 +358,6 @@ class Tube_Planning(SAMP_Base):
         if not solve_inplace:
             return t,x,constraints,prob
         else:
-            # print('number of integer constraints:',count_interger_var(prob))
             prob.solve(solver='GUROBI',TimeLimit = 100) # The Gurobi solver proves to be more accurate and also faster.
             if prob.status == 'optimal':
                 out = unique_tx(t.value[0,:],x.value)
@@ -377,7 +375,6 @@ class Tube_Planning(SAMP_Base):
                                            ([t_start,t_end],[p_start,p_end]),
                                            ...]
         '''
-
         x = cp.Variable((self.d, K+1))
         t = cp.Variable((1, K+1))
 
@@ -424,7 +421,7 @@ class Tube_Planning(SAMP_Base):
 
         # Time positivity constraint
         constraints.append(t[0,0]==self.t0)
-        constraints.append(t[0,1:]>=t[0,:-1])
+        constraints.append(t[0,1:]>=t[0,:-1]+1e-1)
         # Velocity constraints
         vb = self.vmax*(t[0,1:]-t[0,:-1])
         for i in range(self.d):
