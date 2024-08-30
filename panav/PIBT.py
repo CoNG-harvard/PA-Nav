@@ -6,7 +6,8 @@ from panav.ORCA import Ordered_Agent
 
 from time import time
 
-def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
+def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,
+              debug=False,simple_plan=True,
               max_iter = 500,
               tau = 1.0, # The safe time interval. Can be generously long.
               exec_tau = 0.4,    # The execution time of ORCA velocity.
@@ -14,11 +15,13 @@ def PIBT_plan(HG,vmax,bloating_r,TIMEOUT,debug=False,simple_plan=True,
                                 # Leaving a slight horizon margin helps avoid numerical inaccuracy in CVXPY optimization results.
 
             exhaustive_search = True,
-            ignore_inactive_agents =  True
+            ignore_inactive_agents =  True,
+            no_traffic_awareness = False
               ):
     start_T = time()
 
-    paths = traffic_aware_HG_plan(HG)
+    paths = traffic_aware_HG_plan(HG,
+                                  no_traffic_awareness=no_traffic_awareness)
     # print(paths)
     ref_plan = [np.array([HG.node_loc(u) for u in path]).T for path in paths]
     plans = ref_plan
